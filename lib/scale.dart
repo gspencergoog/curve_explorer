@@ -7,24 +7,21 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-class TimeBarRenderObjectWidget extends LeafRenderObjectWidget {
-  TimeBarRenderObjectWidget({
+class GraphScale extends LeafRenderObjectWidget {
+  GraphScale({
     Key key,
-    @required this.value,
-    this.min,
-    this.max,
-    this.minorSteps,
-    this.minorsPerMajor,
-    this.baselineColor,
-    this.majorTickColor,
-    this.minorTickColor,
-    this.barColor,
-    this.textStyle,
+    @required this.min,
+    @required this.max,
+    @required this.minorSteps,
+    @required this.minorsPerMajor,
+    @required this.baselineColor,
+    @required this.majorTickColor,
+    @required this.minorTickColor,
+    @required this.textStyle,
     @required this.mediaQueryData,
     @required this.textDirection,
   }) : super(key: key);
 
-  final Animation<double> value;
   final double min;
   final double max;
   final int minorSteps;
@@ -32,15 +29,13 @@ class TimeBarRenderObjectWidget extends LeafRenderObjectWidget {
   final Color baselineColor;
   final Color majorTickColor;
   final Color minorTickColor;
-  final Color barColor;
   final TextStyle textStyle;
   final MediaQueryData mediaQueryData;
   final TextDirection textDirection;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return RenderTimeBar(
-      value: value,
+    return RenderGraphScale(
       min: min,
       max: max,
       minorSteps: minorSteps,
@@ -48,7 +43,6 @@ class TimeBarRenderObjectWidget extends LeafRenderObjectWidget {
       baselineColor: baselineColor,
       majorTickColor: majorTickColor,
       minorTickColor: minorTickColor,
-      barColor: barColor,
       textStyle: textStyle,
       mediaQueryData: mediaQueryData,
       textDirection: textDirection,
@@ -56,9 +50,8 @@ class TimeBarRenderObjectWidget extends LeafRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, RenderTimeBar renderObject) {
+  void updateRenderObject(BuildContext context, RenderGraphScale renderObject) {
     renderObject
-      ..value = value
       ..min = min
       ..max = max
       ..minorSteps = minorSteps
@@ -66,16 +59,14 @@ class TimeBarRenderObjectWidget extends LeafRenderObjectWidget {
       ..baselineColor = baselineColor
       ..majorTickColor = majorTickColor
       ..minorTickColor = minorTickColor
-      ..barColor = barColor
       ..textStyle = textStyle
       ..mediaQueryData = mediaQueryData
       ..textDirection = textDirection;
   }
 }
 
-class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMixin {
-  RenderTimeBar({
-    Animation<double> value,
+class RenderGraphScale extends RenderProxyBox with RelayoutWhenSystemFontsChangeMixin {
+  RenderGraphScale({
     this.min,
     this.max,
     this.minorSteps,
@@ -83,12 +74,10 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
     @required this.baselineColor,
     this.majorTickColor,
     this.minorTickColor,
-    this.barColor,
     TextStyle textStyle,
     TextDirection textDirection,
     MediaQueryData mediaQueryData,
-  })  : _value = value,
-        _textStyle = textStyle,
+  })  : _textStyle = textStyle,
         _textDirection = textDirection,
         _mediaQueryData = mediaQueryData,
         assert(baselineColor != null),
@@ -103,7 +92,6 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
   Color baselineColor;
   Color majorTickColor;
   Color minorTickColor;
-  Color barColor;
 
   TextStyle get textStyle => _textStyle;
   TextStyle _textStyle;
@@ -111,29 +99,6 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
     _textStyle = textStyle;
     _updateLabelPainters();
     markNeedsLayout();
-  }
-
-  @override
-  void attach(PipelineOwner owner) {
-    super.attach(owner);
-    _value.addListener(markNeedsPaint);
-  }
-
-  @override
-  void detach() {
-    _value.removeListener(markNeedsPaint);
-    super.detach();
-  }
-
-  Animation<double> get value => _value;
-  Animation<double> _value;
-  set value(Animation<double> value) {
-    if (value == _value) {
-      return;
-    }
-    _value.removeListener(markNeedsPaint);
-    _value = value;
-    _value.addListener(markNeedsPaint);
   }
 
   MediaQueryData get mediaQueryData => _mediaQueryData;
@@ -168,7 +133,7 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
       bool tooClose = value != max && max - value < (0.1 * (max - min));
       _labelPainters.add(
         TextPainter()
-          ..text = TextSpan(style: textStyle, text: tooClose ? '' : value.toStringAsFixed(0))
+          ..text = TextSpan(style: textStyle, text: tooClose ? '' : value.toStringAsFixed(1))
           ..textDirection = _textDirection
           ..textScaleFactor = _mediaQueryData.textScaleFactor
           ..layout(),
@@ -179,7 +144,7 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
       double value = (max - min) + min;
       _labelPainters.add(
         TextPainter()
-          ..text = TextSpan(style: textStyle, text: value.toStringAsFixed(0))
+          ..text = TextSpan(style: textStyle, text: value.toStringAsFixed(1))
           ..textDirection = _textDirection
           ..textScaleFactor = _mediaQueryData.textScaleFactor
           ..layout(),
@@ -224,9 +189,6 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
       ..color = majorTickColor ?? baselineColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = _majorStrokeWidth;
-    final Paint barPaint = Paint()
-      ..color = barColor ?? baselineColor
-      ..style = PaintingStyle.fill;
 
     final scaleWidth = size.width - _labelPainters.first.width / 2.0 - _labelPainters.last.width / 2.0;
     final Rect rect = offset & size;
@@ -275,29 +237,5 @@ class RenderTimeBar extends RenderProxyBox with RelayoutWhenSystemFontsChangeMix
         }
         break;
     }
-
-    final double barWidth = scaleRect.width * value.value;
-    double start;
-    switch (textDirection) {
-      case TextDirection.ltr:
-        start = scaleRect.left;
-        break;
-      case TextDirection.rtl:
-        start = scaleRect.right - barWidth;
-        break;
-    }
-    final Rect barRect = Rect.fromLTWH(
-      start,
-      scaleRect.bottom + _scaleBarPadding,
-      barWidth,
-      _minBarHeight,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        barRect,
-        Radius.circular(4.0),
-      ),
-      barPaint,
-    );
   }
 }

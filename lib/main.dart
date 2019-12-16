@@ -9,6 +9,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
+import 'scale.dart';
+import 'scale.dart';
+
 // Sets a platform override for desktop to avoid exceptions. See
 // https://flutter.dev/desktop#target-platform-override for more info.
 // TODO(gspencergoog): Remove once TargetPlatform includes all desktop platforms.
@@ -45,19 +48,44 @@ class CurveExplorer extends StatelessWidget {
           child: const Text('+'),
           onPressed: () {},
         ),
-        body: Center(
-            child: Container(
-          width: 500,
-          height: 500,
-          child: Stack(
-            fit: StackFit.expand,
-            children: <Widget>[
-              CurveDisplay(curve: curve),
-              Positioned(child: ControlPolylineDisplay(controlPoints: controlPoints)),
-              Positioned(child: ControlPointDisplay(controlPoints: controlPoints)),
-            ],
-          ),
-        )),
+        body: Builder(
+          builder: (BuildContext context) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Container(
+                    width: 500,
+                    height: 500,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        CurveDisplay(curve: curve),
+                        Positioned(child: ControlPolylineDisplay(controlPoints: controlPoints)),
+                        Positioned(child: ControlPointDisplay(controlPoints: controlPoints)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 500,
+                    child: GraphScale(
+                      mediaQueryData: MediaQuery.of(context),
+                      textDirection: Directionality.of(context),
+                      baselineColor: Colors.black,
+                      min: 0.0,
+                      max: 1.0,
+                      minorsPerMajor: 4,
+                      textStyle: Theme.of(context).textTheme.body1,
+                      minorSteps: 32,
+                      majorTickColor: Colors.black,
+                      minorTickColor: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -281,30 +309,30 @@ class ControlPointPainter extends CustomPainter {
     this.controlPoint,
     this.color = Colors.red,
     this.hoverColor = Colors.red,
-    this.focusColor = Colors.blue,
+    this.selectColor = Colors.blue,
     this.strokeWidth = 1.0,
     this.radius = 4.0,
     this.hover,
     this.index,
-    this.focus = false,
+    this.select = false,
     this.mousePosition,
   })  : assert(controlPoint != null),
         assert(color != null),
         assert(hoverColor != null),
-        assert(focusColor != null),
+        assert(selectColor != null),
         assert(strokeWidth != null),
         assert(radius != null),
         assert(hover != null),
-        assert(focus != null);
+        assert(select != null);
 
   final Offset controlPoint;
   final Color color;
   final Color hoverColor;
-  final Color focusColor;
+  final Color selectColor;
   final double strokeWidth;
   final double radius;
   final List<bool> hover;
-  final bool focus;
+  final bool select;
   final int index;
   Offset _lastPoint;
   final Offset mousePosition;
@@ -327,10 +355,10 @@ class ControlPointPainter extends CustomPainter {
       hover[index] = false;
     }
     final Paint paint = Paint()
-      ..color = (!hover[index] && !focus) ? color : hover[index] ? hoverColor : focusColor
+      ..color = (!hover[index] && !select) ? color : hover[index] ? hoverColor : selectColor
       ..strokeWidth = strokeWidth
       ..strokeJoin = StrokeJoin.round
-      ..style = (hover[index] || focus) ? PaintingStyle.fill : PaintingStyle.stroke
+      ..style = (hover[index] || select) ? PaintingStyle.fill : PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
     canvas.drawCircle(_lastPoint, radius, paint);
   }
@@ -345,8 +373,8 @@ class ControlPointPainter extends CustomPainter {
     return controlPoint != oldDelegate.controlPoint ||
         color != oldDelegate.color ||
         color != oldDelegate.hoverColor ||
-        color != oldDelegate.focusColor ||
-        focus != oldDelegate.focus ||
+        color != oldDelegate.selectColor ||
+        select != oldDelegate.select ||
         hover != oldDelegate.hover ||
         strokeWidth != oldDelegate.strokeWidth;
   }

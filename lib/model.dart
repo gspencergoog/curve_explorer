@@ -22,7 +22,7 @@ abstract class CurveModel extends Model {
   }
 
   List<Offset> get controlPoints;
-  Set<Offset> get selectedPoints;
+  Set<int> get selectedPoints;
   Curve get curve;
 
   Size displaySize;
@@ -35,19 +35,19 @@ abstract class CurveModel extends Model {
   /// Adds the given point to the current selection.
   ///
   /// Returns true if the point was not already in the selection.
-  bool addToSelection(Offset selected);
+  bool addToSelection(int selected);
 
   /// Removes the given point from the current selection.
   ///
   /// Returns true if the point existed and was removed from the selection.
-  bool removeFromSelection(Offset selected);
+  bool removeFromSelection(int selected);
 
   static CurveModel of(BuildContext context) => ScopedModel.of<CurveModel>(context);
 }
 
 class CatmullRomModel extends CurveModel {
   CatmullRomModel({List<Offset> controlPoints, double tension})
-      : selectedPoints = <Offset>{},
+      : selectedPoints = <int>{},
         super._() {
     curve = CatmullRomCurve(controlPoints, tension: tension);
   }
@@ -56,7 +56,7 @@ class CatmullRomModel extends CurveModel {
   List<Offset> get controlPoints => curve.controlPoints;
 
   @override
-  final Set<Offset> selectedPoints;
+  final Set<int> selectedPoints;
 
   @override
   CatmullRomCurve curve;
@@ -64,22 +64,22 @@ class CatmullRomModel extends CurveModel {
   @override
   bool attemptUpdate(List<Offset> controlPoints, [double tension]) {
     tension ??= curve.tension;
-    List<String> reasons = <String>[];
-    bool valid = CatmullRomCurve.validateControlPoints(controlPoints, tension: tension, reasons: reasons);
-    if (!valid) {
-      print('Failed validation because:');
-      for (String reason in reasons) {
-        print('  $reason');
-      }
-      return false;
-    }
+//    List<String> reasons = <String>[];
+//    bool valid = CatmullRomCurve.validateControlPoints(controlPoints, tension: tension, reasons: reasons);
+//    if (!valid) {
+//      print('Failed validation because:');
+//      for (String reason in reasons) {
+//        print('  $reason');
+//      }
+//      return false;
+//    }
     curve = CatmullRomCurve(controlPoints, tension: tension);
     return true;
   }
 
   @override
-  bool addToSelection(Offset selected) => selectedPoints.add(selected);
+  bool addToSelection(int selected) => selectedPoints.add(selected);
 
   @override
-  bool removeFromSelection(Offset selected) => selectedPoints.remove(selected);
+  bool removeFromSelection(int selected) => selectedPoints.remove(selected);
 }

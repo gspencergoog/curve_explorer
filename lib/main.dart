@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -122,13 +123,39 @@ class CurvePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    for (int i = 0; i <= resolution; ++i) {
-      double t = i / resolution;
-      double value = model.curve.transform(t);
+    const double maxDistance = 0.001;
+
+    Offset newPoint(double t) {
+      return Offset(t, model.curve.transform(t));
+    }
+
+    Offset subdivideIfNeeded(Offset p1, Offset p2) {
+      final double distanceSquared = (p2 - p1).distanceSquared;
+      if (distanceSquared > maxDistance) {
+        final double newT = (p1.dx + p2.dx) / 2.0;
+        return newPoint(newT);
+      }
+      return null;
+    }
+
+    List<Offset> subdivide(Offset p1, Offset p2, [depth = 0]) {
+      Offset between = subdivideIfNeeded(p1, p2);
+      if (depth < 100 && between != null) {
+        return <Offset>[
+          ...subdivide(p1, between, depth + 1),
+          ...subdivide(between, p2, depth + 1),
+        ];
+      }
+      return <Offset>[p1, p2];
+    }
+
+    List<Offset> points = subdivide(newPoint(0.0), newPoint(1.0));
+    for (int i = 0; i < points.length; ++i) {
+      Offset point = points[i];
       if (i == 0) {
-        path.moveTo(t * size.width, (1.0 - value) * size.height);
+        path.moveTo(point.dx * size.width, (1.0 - point.dy) * size.height);
       } else {
-        path.lineTo(t * size.width, (1.0 - value) * size.height);
+        path.lineTo(point.dx * size.width, (1.0 - point.dy) * size.height);
       }
     }
     canvas.drawPath(path, paint);
@@ -259,11 +286,11 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
             delta.dx / curveModel.displaySize.width,
             -delta.dy / curveModel.displaySize.height,
           );
-          print('Dragging: ${details.localPosition - _panStart} (${parametricDelta.dx.toStringAsFixed(2)}, ${parametricDelta.dy.toStringAsFixed(2)}) ${curveModel.selectedPoints}');
+//          print('Dragging: ${details.localPosition - _panStart} (${parametricDelta.dx.toStringAsFixed(2)}, ${parametricDelta.dy.toStringAsFixed(2)}) ${curveModel.selectedPoints}');
           for (int i = 1; i < currentPoints.length - 1; ++i) {
             if (curveModel.selectedPoints.contains(i)) {
               final Offset newPosition = currentPoints[i] + parametricDelta;
-              print('Moving from ${currentPoints[i]} to $newPosition ($i)');
+//              print('Moving from ${currentPoints[i]} to $newPosition ($i)');
               newPoints.add(newPosition);
             } else {
               newPoints.add(currentPoints[i]);
@@ -273,7 +300,7 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
           if (updated) {
             _panStart = _panStart + delta;
           }
-          print('Updated model: $updated $newPoints');
+//          print('Updated model: $updated $newPoints');
         });
       },
       child: MouseRegion(

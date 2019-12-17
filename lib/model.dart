@@ -64,15 +64,15 @@ class CatmullRomModel extends CurveModel {
   @override
   bool attemptUpdate(List<Offset> controlPoints, [double tension]) {
     tension ??= curve.tension;
-//    List<String> reasons = <String>[];
-//    bool valid = CatmullRomCurve.validateControlPoints(controlPoints, tension: tension, reasons: reasons);
-//    if (!valid) {
-//      print('Failed validation because:');
-//      for (String reason in reasons) {
-//        print('  $reason');
-//      }
-//      return false;
-//    }
+    List<String> reasons = <String>[];
+    bool valid = CatmullRomCurve.validateControlPoints(controlPoints, tension: tension, reasons: reasons);
+    if (!valid) {
+      print('Failed validation because:');
+      for (String reason in reasons) {
+        print('  $reason');
+      }
+      return false;
+    }
     curve = CatmullRomCurve(controlPoints, tension: tension);
     return true;
   }

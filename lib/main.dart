@@ -35,10 +35,9 @@ class CurveExplorer extends StatefulWidget {
 class _CurveExplorerState extends State<CurveExplorer> {
   static const List<Offset> _initialControlPoints = const <Offset>[
     Offset(0.0, 0.0),
-    Offset(0.2, 0.25),
-    Offset(0.33, 0.25),
-    Offset(0.5, 1.0),
-    Offset(0.8, 0.75),
+    Offset(0.25, 0.25),
+    Offset(0.5, 0.5),
+    Offset(0.75, 0.75),
     Offset(1.0, 1.0),
   ];
 
@@ -190,11 +189,7 @@ class ControlPolylinePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    List<Offset> points = <Offset>[
-      Offset.zero,
-      ...curveModel.controlPoints,
-      const Offset(1.0, 1.0),
-    ].map<Offset>((Offset point) => transform(point, size)).toList();
+    List<Offset> points = curveModel.controlPoints.map<Offset>((Offset point) => transform(point, size)).toList();
 
     path.moveTo(points[0].dx, points[0].dy);
     for (int i = 1; i < curveModel.controlPoints.length; ++i) {

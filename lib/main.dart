@@ -123,33 +123,12 @@ class CurvePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    const double maxDistance = 0.001;
 
-    Offset newPoint(double t) {
-      return Offset(t, model.curve.transform(t));
-    }
-
-    Offset subdivideIfNeeded(Offset p1, Offset p2) {
-      final double distanceSquared = (p2 - p1).distanceSquared;
-      if (distanceSquared > maxDistance) {
-        final double newT = (p1.dx + p2.dx) / 2.0;
-        return newPoint(newT);
-      }
-      return null;
-    }
-
-    List<Offset> subdivide(Offset p1, Offset p2, [depth = 0]) {
-      Offset between = subdivideIfNeeded(p1, p2);
-      if (depth < 100 && between != null) {
-        return <Offset>[
-          ...subdivide(p1, between, depth + 1),
-          ...subdivide(between, p2, depth + 1),
-        ];
-      }
-      return <Offset>[p1, p2];
-    }
-
-    List<Offset> points = subdivide(newPoint(0.0), newPoint(1.0));
+    CatmullRomCurve curve = model.curve;
+    List<Offset> points = curve.valueSpline.generateSamples(
+      start: curve.valueSpline.findInverse(0.0),
+      end: curve.valueSpline.findInverse(1.0),
+    );
     for (int i = 0; i < points.length; ++i) {
       Offset point = points[i];
       if (i == 0) {

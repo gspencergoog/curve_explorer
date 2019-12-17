@@ -8,9 +8,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:scoped_model/scoped_model.dart';
 
-import 'scale.dart';
-import 'scale.dart';
+import 'graph.dart';
+import 'model.dart';
 
 // Sets a platform override for desktop to avoid exceptions. See
 // https://flutter.dev/desktop#target-platform-override for more info.
@@ -26,65 +27,61 @@ void main() {
   runApp(CurveExplorer());
 }
 
-class CurveExplorer extends StatelessWidget {
-  static const List<Offset> controlPoints = const <Offset>[
+class CurveExplorer extends StatefulWidget {
+  @override
+  _CurveExplorerState createState() => _CurveExplorerState();
+}
+
+class _CurveExplorerState extends State<CurveExplorer> {
+  static const List<Offset> _initialControlPoints = const <Offset>[
     Offset(0.2, 0.25),
     Offset(0.33, 0.25),
     Offset(0.5, 1.0),
     Offset(0.8, 0.75),
   ];
-  final CatmullRomCurve curve = CatmullRomCurve(
-    controlPoints,
-  );
+
+  @override
+  void initState() {
+    super.initState();
+    model = CatmullRomModel(controlPoints: _initialControlPoints, tension: 0.0);
+  }
+
+  CurveModel model;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Curve Explorer'),
-        ),
-        floatingActionButton: FloatingActionButton(
-          child: const Text('+'),
-          onPressed: () {},
-        ),
-        body: Builder(
-          builder: (BuildContext context) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Container(
-                    width: 500,
-                    height: 500,
+    return ScopedModel<CurveModel>(
+      model: model,
+      child: MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            title: const Text('Curve Explorer'),
+          ),
+          body: Builder(
+            builder: (BuildContext context) {
+              CurveModel curveModel = CurveModel.of(context);
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Graph(
+                    min: 0.0,
+                    max: 1.0,
+                    majorTickColor: Colors.black,
+                    minorTickColor: Colors.grey,
+                    textStyle: Theme.of(context).textTheme.body1,
                     child: Stack(
                       fit: StackFit.expand,
                       children: <Widget>[
-                        CurveDisplay(curve: curve),
-                        Positioned(child: ControlPolylineDisplay(controlPoints: controlPoints)),
-                        Positioned(child: ControlPointDisplay(controlPoints: controlPoints)),
+                        CurveDisplay(),
+                        Positioned(child: ControlPolylineDisplay()),
+                        Positioned(child: ControlPointDisplay()),
                       ],
                     ),
                   ),
-                  SizedBox(
-                    width: 500,
-                    child: GraphScale(
-                      mediaQueryData: MediaQuery.of(context),
-                      textDirection: Directionality.of(context),
-                      baselineColor: Colors.black,
-                      min: 0.0,
-                      max: 1.0,
-                      minorsPerMajor: 4,
-                      textStyle: Theme.of(context).textTheme.body1,
-                      minorSteps: 32,
-                      majorTickColor: Colors.black,
-                      minorTickColor: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -92,21 +89,23 @@ class CurveExplorer extends StatelessWidget {
 }
 
 class CurveDisplay extends StatelessWidget {
-  const CurveDisplay({this.curve}) : assert(curve != null);
-
-  final Curve curve;
+  const CurveDisplay();
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: CurvePainter(curve: this.curve));
+    CurveModel curveModel = CurveModel.of(context);
+    return CustomPaint(
+      painter: CurvePainter(context: context, curve: curveModel.curve),
+    );
   }
 }
 
 class CurvePainter extends CustomPainter {
-  const CurvePainter({this.curve, this.resolution = 100, this.color = Colors.blueGrey, this.strokeWidth = 3.0})
+  const CurvePainter({this.context, this.curve, this.resolution = 100, this.color = Colors.blueGrey, this.strokeWidth = 3.0})
       : assert(curve != null),
         assert(resolution != null);
 
+  final BuildContext context;
   final Curve curve;
   final int resolution;
   final Color color;
@@ -114,6 +113,10 @@ class CurvePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    CurveModel model = CurveModel.of(context);
+    if (model.displaySize != size) {
+      model.displaySize = size;
+    }
     final Path path = Path();
     final Paint paint = Paint()
       ..color = color
@@ -121,7 +124,7 @@ class CurvePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    for (int i = 0; i < resolution; ++i) {
+    for (int i = 0; i <= resolution; ++i) {
       double t = i / resolution;
       double value = curve.transform(t);
       if (i == 0) {
@@ -140,9 +143,7 @@ class CurvePainter extends CustomPainter {
 }
 
 class ControlPolylineDisplay extends StatefulWidget {
-  const ControlPolylineDisplay({this.controlPoints}) : assert(controlPoints != null);
-
-  final List<Offset> controlPoints;
+  const ControlPolylineDisplay();
 
   @override
   _ControlPolylineDisplayState createState() => _ControlPolylineDisplayState();
@@ -150,35 +151,17 @@ class ControlPolylineDisplay extends StatefulWidget {
 
 class _ControlPolylineDisplayState extends State<ControlPolylineDisplay> {
   Offset mousePosition;
-  List<Offset> points;
-
-  @override
-  void initState() {
-    super.initState();
-    points = <Offset>[
-      Offset.zero,
-      ...this.widget.controlPoints,
-      const Offset(1.0, 1.0),
-    ];
-  }
-
-  @override
-  void didUpdateWidget(ControlPolylineDisplay oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.controlPoints != oldWidget.controlPoints) {
-      points = <Offset>[
-        Offset.zero,
-        ...this.widget.controlPoints,
-        const Offset(1.0, 1.0),
-      ];
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    CurveModel curveModel = CurveModel.of(context);
     return CustomPaint(
       painter: ControlPolylinePainter(
-        controlPoints: points,
+        controlPoints: <Offset>[
+          Offset.zero,
+          ...curveModel.controlPoints,
+          const Offset(1.0, 1.0),
+        ],
       ),
     );
   }
@@ -229,76 +212,112 @@ class ControlPolylinePainter extends CustomPainter {
 }
 
 class ControlPointDisplay extends StatefulWidget {
-  const ControlPointDisplay({this.controlPoints}) : assert(controlPoints != null);
-
-  final List<Offset> controlPoints;
+  const ControlPointDisplay();
 
   @override
   _ControlPointDisplayState createState() => _ControlPointDisplayState();
 }
 
 class _ControlPointDisplayState extends State<ControlPointDisplay> {
-  List<Offset> points;
-  List<bool> hovered;
+  List<bool> hovered = <bool>[];
   Offset lastMousePosition;
-
-  @override
-  void initState() {
-    super.initState();
-    points = <Offset>[
-      Offset.zero,
-      ...this.widget.controlPoints,
-      const Offset(1.0, 1.0),
-    ];
-    hovered = List<bool>.generate(points.length, (int index) => false);
-  }
-
-  @override
-  void didUpdateWidget(ControlPointDisplay oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.controlPoints != oldWidget.controlPoints) {
-      points = <Offset>[
-        Offset.zero,
-        ...this.widget.controlPoints,
-        const Offset(1.0, 1.0),
-      ];
-      hovered = List<bool>.generate(points.length, (int index) => false);
-    }
-  }
+  Offset _panStart;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (PointerEnterEvent event) {
+    CurveModel curveModel = CurveModel.of(context);
+    List<Offset> points = <Offset>[
+      Offset.zero,
+      ...curveModel.controlPoints,
+      const Offset(1.0, 1.0),
+    ];
+
+    if (points.length != hovered.length) {
+      hovered = List<bool>.generate(points.length, (int index) => false);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        final int hoveredIndex = hovered.indexOf(true);
+        print('hovered.length ${hovered.length} controls.length ${curveModel.controlPoints.length}');
+        if (hoveredIndex == -1) {
+          // Nothing hovered over.
+          return;
+        }
+        final Offset controlPoint = points[hoveredIndex];
+        if (curveModel.selectedPoints.contains(controlPoint)) {
+          curveModel.removeFromSelection(controlPoint);
+        } else {
+          curveModel.addToSelection(controlPoint);
+        }
+      },
+      onPanStart: (DragStartDetails details) {
         setState(() {
-          lastMousePosition = event.localPosition;
+          _panStart = details.localPosition;
         });
       },
-      onHover: (PointerHoverEvent event) {
+      onPanEnd: (DragEndDetails details) {
         setState(() {
-          lastMousePosition = event.localPosition;
+          _panStart = null;
         });
       },
-      onExit: (PointerExitEvent event) {
+      onPanUpdate: (DragUpdateDetails details) {
+        print('Dragging: $details');
+        if (curveModel.selectedPoints.isEmpty) {
+          return;
+        }
         setState(() {
-          lastMousePosition = null;
+          final List<Offset> currentPoints = points.toList();
+          final List<Offset> newPoints = <Offset>[];
+          final Offset delta = details.localPosition - _panStart;
+          final Offset parametricDelta = Offset(
+            delta.dx / curveModel.displaySize.width,
+            -delta.dy / curveModel.displaySize.height,
+          );
+          for (int i = 1; i < currentPoints.length - 1; ++i) {
+            if (curveModel.selectedPoints.contains(currentPoints[i])) {
+              newPoints.add(currentPoints[i] + parametricDelta);
+            } else {
+              newPoints.add(currentPoints[i]);
+            }
+          }
+          bool updated = curveModel.attemptUpdate(newPoints);
+          print('Updated model: $updated $newPoints');
         });
       },
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          ...List<Widget>.generate(points.length, (int index) {
-            final Offset point = points[index];
-            return CustomPaint(
-              painter: ControlPointPainter(
-                controlPoint: point,
-                index: index,
-                hover: hovered,
-                mousePosition: lastMousePosition,
-              ),
-            );
-          }).toList(),
-        ],
+      child: MouseRegion(
+        onEnter: (PointerEnterEvent event) {
+          setState(() {
+            lastMousePosition = event.localPosition;
+          });
+        },
+        onHover: (PointerHoverEvent event) {
+          setState(() {
+            lastMousePosition = event.localPosition;
+          });
+        },
+        onExit: (PointerExitEvent event) {
+          setState(() {
+            lastMousePosition = null;
+          });
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            ...List<Widget>.generate(points.length, (int index) {
+              final Offset point = points[index];
+              return CustomPaint(
+                painter: ControlPointPainter(
+                  controlPoint: point,
+                  index: index,
+                  hover: hovered,
+                  select: CurveModel.of(context).selectedPoints.contains(point),
+                  mousePosition: lastMousePosition,
+                ),
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }

@@ -11,9 +11,9 @@ enum CurveType {
 }
 
 abstract class CurveModel extends Model {
-  CurveModel._();
+  CurveModel._() : selection = <int>{};
 
-  factory CurveModel(CurveType type) {
+      factory CurveModel(CurveType type) {
     switch (type) {
       case CurveType.catmullRom:
         return CatmullRomModel();
@@ -22,7 +22,6 @@ abstract class CurveModel extends Model {
   }
 
   List<Offset> get controlPoints;
-  Set<int> get selectedPoints;
   int get hoverIndex;
   set hoverIndex(int value);
   double get tension;
@@ -36,23 +35,48 @@ abstract class CurveModel extends Model {
   /// Returns true if successful.
   bool attemptUpdate(List<Offset> controlPoints);
 
+  /// The list of control point indices that are selected.
+  final Set<int> selection;
+
+  /// Returns true if the control point at `index` is selected.
+  bool isSelected(int index) => selection.contains(index);
+
   /// Adds the given point to the current selection.
   ///
   /// Returns true if the point was not already in the selection.
-  bool addToSelection(int selected);
+  bool addToSelection(int selected) {
+    if (selection.add(selected)) {
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  /// Clears the set of currently selected points.
+  void clearSelection() {
+    if (selection.isNotEmpty) {
+      selection.clear();
+      notifyListeners();
+    }
+  }
 
   /// Removes the given point from the current selection.
   ///
   /// Returns true if the point existed and was removed from the selection.
-  bool removeFromSelection(int selected);
+  bool removeFromSelection(int selected) {
+    if (selection.remove(selected)) {
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
 
   static CurveModel of(BuildContext context) => ScopedModel.of<CurveModel>(context);
 }
 
 class CatmullRomModel extends CurveModel {
   CatmullRomModel({List<Offset> controlPoints, double tension})
-      : selectedPoints = <int>{},
-        _hoveredIndex = null,
+      : _hoveredIndex = null,
         super._() {
     curve = CatmullRomCurve(controlPoints, tension: tension);
   }
@@ -60,8 +84,6 @@ class CatmullRomModel extends CurveModel {
   @override
   List<Offset> get controlPoints => curve.controlPoints;
 
-  @override
-  final Set<int> selectedPoints;
 
   @override
   double get tension => curve.tension;
@@ -109,9 +131,4 @@ class CatmullRomModel extends CurveModel {
     return true;
   }
 
-  @override
-  bool addToSelection(int selected) => selectedPoints.add(selected);
-
-  @override
-  bool removeFromSelection(int selected) => selectedPoints.remove(selected);
 }

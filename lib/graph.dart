@@ -10,9 +10,12 @@ import 'package:flutter/rendering.dart';
 class Graph extends StatelessWidget {
   Graph({
     Key key,
-    this.min = 0.0,
-    this.max = 1.0,
-    this.steps = 10,
+    this.minX = 0.0,
+    this.maxX = 1.0,
+    this.minY = -0.5,
+    this.maxY = 1.5,
+    this.stepsX = 10,
+    this.stepsY = 15,
     this.majorTickColor = Colors.black,
     this.minorTickColor = Colors.grey,
     @required this.textStyle,
@@ -20,9 +23,12 @@ class Graph extends StatelessWidget {
   }) : super(key: key);
 
   final Widget child;
-  final double min;
-  final double max;
-  final int steps;
+  final double minX;
+  final double maxX;
+  final double minY;
+  final double maxY;
+  final int stepsX;
+  final int stepsY;
   final TextStyle textStyle;
   final Color majorTickColor;
   final Color minorTickColor;
@@ -43,8 +49,8 @@ class Graph extends StatelessWidget {
   Widget build(BuildContext context) {
     TextDirection textDirection = Directionality.of(context);
     MediaQueryData mediaQueryData = MediaQuery.of(context);
-    TextPainter minLabel = _createLabel(min.toStringAsFixed(precision), textDirection, mediaQueryData);
-    TextPainter maxLabel = _createLabel(max.toStringAsFixed(precision), textDirection, mediaQueryData);
+    TextPainter minLabel = _createLabel(minX.toStringAsFixed(precision), textDirection, mediaQueryData);
+    TextPainter maxLabel = _createLabel(maxX.toStringAsFixed(precision), textDirection, mediaQueryData);
     return Stack(
       children: <Widget>[
         Padding(
@@ -63,9 +69,9 @@ class Graph extends StatelessWidget {
           width: _verticalScaleWidth,
           child: CustomPaint(
             painter: VerticalScalePainter(
-              min: min,
-              max: max,
-              steps: steps,
+              min: minY,
+              max: maxY,
+              steps: stepsY,
               majorTickColor: majorTickColor,
               minorTickColor: minorTickColor,
               textStyle: textStyle,
@@ -81,9 +87,9 @@ class Graph extends StatelessWidget {
           height: _horizontalScaleHeight,
           child: CustomPaint(
             painter: HorizontalScalePainter(
-              min: min,
-              max: max,
-              steps: steps,
+              min: minX,
+              max: maxX,
+              steps: stepsX,
               majorTickColor: majorTickColor,
               minorTickColor: minorTickColor,
               textStyle: textStyle,

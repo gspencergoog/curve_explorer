@@ -90,13 +90,22 @@ class _CurveExplorerState extends State<CurveExplorer> {
 }
 
 class CurveDisplay extends StatelessWidget {
-  const CurveDisplay();
+  const CurveDisplay({
+    this.color = Colors.blueGrey,
+    this.strokeWidth = 3.0,
+  });
+
+  final Color color;
+  final double strokeWidth;
 
   @override
   Widget build(BuildContext context) {
-    return ScopedModelDescendant<CurveModel>(
-      builder: (context, child, model) => CustomPaint(
-        painter: CurvePainter(model: model),
+    final CurveModel model = CurveModel.of(context);
+    return CustomPaint(
+      painter: CurvePainter(
+        model: model,
+        color: color,
+        strokeWidth: strokeWidth,
       ),
     );
   }
@@ -105,13 +114,11 @@ class CurveDisplay extends StatelessWidget {
 class CurvePainter extends CustomPainter {
   const CurvePainter({
     this.model,
-    this.resolution = 100,
     this.color = Colors.blueGrey,
     this.strokeWidth = 3.0,
-  }) : assert(resolution != null);
+  });
 
   final CurveModel model;
-  final int resolution;
   final Color color;
   final double strokeWidth;
 
@@ -133,7 +140,7 @@ class CurvePainter extends CustomPainter {
       start: curve.valueSpline.findInverse(0.0),
       end: curve.valueSpline.findInverse(1.0),
     );
-    print('points.length: ${points.length}');
+    print('regen curve: ${points.length}');
     for (int i = 0; i < points.length; ++i) {
       Offset point = points[i].value;
       if (i == 0) {
@@ -147,7 +154,7 @@ class CurvePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CurvePainter oldDelegate) {
-    return resolution != oldDelegate.resolution || color != oldDelegate.color || strokeWidth != oldDelegate.strokeWidth;
+    return model.curve != oldDelegate.model.curve || color != oldDelegate.color || strokeWidth != oldDelegate.strokeWidth;
   }
 }
 
@@ -226,7 +233,7 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
   List<bool> hovered = <bool>[];
   Offset lastMousePosition;
   Offset _panStart;
-
+  int _currentDrag;
 
   @override
   Widget build(BuildContext context) {
@@ -253,11 +260,20 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
       },
       onPanStart: (DragStartDetails details) {
         setState(() {
+          final int hoveredIndex = hovered.indexOf(true);
+          if (hoveredIndex != -1 && !curveModel.selectedPoints.contains(hoveredIndex)) {
+            _currentDrag = hoveredIndex;
+            curveModel.addToSelection(hoveredIndex);
+          }
           _panStart = details.localPosition;
         });
       },
       onPanEnd: (DragEndDetails details) {
         setState(() {
+          if (_currentDrag != null) {
+            curveModel.removeFromSelection(_currentDrag);
+            _currentDrag = null;
+          }
           _panStart = null;
         });
       },
@@ -304,20 +320,18 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
         },
         child: Stack(
           fit: StackFit.expand,
-          children: <Widget>[
-            ...List<Widget>.generate(curveModel.controlPoints.length, (int index) {
-              final Offset point = curveModel.controlPoints[index];
-              return CustomPaint(
-                painter: ControlPointPainter(
-                  controlPoint: point,
-                  index: index,
-                  hover: hovered,
-                  select: CurveModel.of(context).selectedPoints.contains(index),
-                  mousePosition: lastMousePosition,
-                ),
-              );
-            }).toList(),
-          ],
+          children: List<Widget>.generate(curveModel.controlPoints.length, (int index) {
+            final Offset point = curveModel.controlPoints[index];
+            return CustomPaint(
+              painter: ControlPointPainter(
+                controlPoint: point,
+                index: index,
+                hover: hovered,
+                select: CurveModel.of(context).selectedPoints.contains(index),
+                mousePosition: lastMousePosition,
+              ),
+            );
+          }).toList(),
         ),
       ),
     );

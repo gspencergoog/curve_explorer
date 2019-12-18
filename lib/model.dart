@@ -23,9 +23,11 @@ abstract class CurveModel extends Model {
 
   List<Offset> get controlPoints;
   Set<int> get selectedPoints;
+  int get hoveredIndex;
+  set hoveredIndex(int value);
   Curve get curve;
 
-  Size displaySize;
+  Size displaySize = Size.zero;
 
   /// Tries to update the curve with the given information.
   ///
@@ -48,6 +50,7 @@ abstract class CurveModel extends Model {
 class CatmullRomModel extends CurveModel {
   CatmullRomModel({List<Offset> controlPoints, double tension})
       : selectedPoints = <int>{},
+        _hoveredIndex = null,
         super._() {
     curve = CatmullRomCurve(controlPoints, tension: tension);
   }
@@ -59,7 +62,24 @@ class CatmullRomModel extends CurveModel {
   final Set<int> selectedPoints;
 
   @override
-  CatmullRomCurve curve;
+  int get hoveredIndex => _hoveredIndex;
+  int _hoveredIndex;
+  set hoveredIndex(int hoveredIndex) {
+    if (hoveredIndex != _hoveredIndex) {
+      _hoveredIndex = hoveredIndex;
+      notifyListeners();
+    }
+  }
+
+  @override
+  CatmullRomCurve get curve => _curve;
+  CatmullRomCurve _curve;
+  set curve(CatmullRomCurve curve) {
+    if (curve != _curve) {
+      _curve = curve;
+      notifyListeners();
+    }
+  }
 
   @override
   bool attemptUpdate(List<Offset> controlPoints, [double tension]) {

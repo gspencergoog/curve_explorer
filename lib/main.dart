@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:scoped_model/scoped_model.dart';
 
@@ -96,23 +96,27 @@ class CurveDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     return ScopedModelDescendant<CurveModel>(
       builder: (context, child, model) => CustomPaint(
-        painter: CurvePainter(context: context),
+        painter: CurvePainter(model: model),
       ),
     );
   }
 }
 
 class CurvePainter extends CustomPainter {
-  const CurvePainter({this.context, this.resolution = 100, this.color = Colors.blueGrey, this.strokeWidth = 3.0}) : assert(resolution != null);
+  const CurvePainter({
+    this.model,
+    this.resolution = 100,
+    this.color = Colors.blueGrey,
+    this.strokeWidth = 3.0,
+  }) : assert(resolution != null);
 
-  final BuildContext context;
+  final CurveModel model;
   final int resolution;
   final Color color;
   final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
-    CurveModel model = CurveModel.of(context);
     if (model.displaySize != size) {
       model.displaySize = size;
     }
@@ -125,12 +129,13 @@ class CurvePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     CatmullRomCurve curve = model.curve;
-    List<Offset> points = curve.valueSpline.generateSamples(
+    List<Curve2DSample> points = curve.valueSpline.generateSamples(
       start: curve.valueSpline.findInverse(0.0),
       end: curve.valueSpline.findInverse(1.0),
     );
+    print('points.length: ${points.length}');
     for (int i = 0; i < points.length; ++i) {
-      Offset point = points[i];
+      Offset point = points[i].value;
       if (i == 0) {
         path.moveTo(point.dx * size.width, (1.0 - point.dy) * size.height);
       } else {
@@ -222,6 +227,7 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
   Offset lastMousePosition;
   Offset _panStart;
 
+
   @override
   Widget build(BuildContext context) {
     CurveModel curveModel = CurveModel.of(context);
@@ -237,10 +243,12 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
           // Nothing movable hovered over.
           return;
         }
-        if (curveModel.selectedPoints.contains(hoveredIndex)) {
-          curveModel.removeFromSelection(hoveredIndex);
-        } else {
-          curveModel.addToSelection(hoveredIndex);
+        if (LogicalKeyboardKey.collapseSynonyms(RawKeyboard.instance.keysPressed).contains(LogicalKeyboardKey.control)) {
+          if (curveModel.selectedPoints.contains(hoveredIndex)) {
+            curveModel.removeFromSelection(hoveredIndex);
+          } else {
+            curveModel.addToSelection(hoveredIndex);
+          }
         }
       },
       onPanStart: (DragStartDetails details) {
@@ -257,30 +265,26 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
         if (curveModel.selectedPoints.isEmpty) {
           return;
         }
-        setState(() {
-          final List<Offset> currentPoints = curveModel.controlPoints.toList();
-          final List<Offset> newPoints = <Offset>[];
-          final Offset delta = details.localPosition - _panStart;
-          final Offset parametricDelta = Offset(
-            delta.dx / curveModel.displaySize.width,
-            -delta.dy / curveModel.displaySize.height,
-          );
-//          print('Dragging: ${details.localPosition - _panStart} (${parametricDelta.dx.toStringAsFixed(2)}, ${parametricDelta.dy.toStringAsFixed(2)}) ${curveModel.selectedPoints}');
-          for (int i = 1; i < currentPoints.length - 1; ++i) {
-            if (curveModel.selectedPoints.contains(i)) {
-              final Offset newPosition = currentPoints[i] + parametricDelta;
-//              print('Moving from ${currentPoints[i]} to $newPosition ($i)');
-              newPoints.add(newPosition);
-            } else {
-              newPoints.add(currentPoints[i]);
-            }
+        final List<Offset> currentPoints = curveModel.controlPoints;
+        final List<Offset> newPoints = <Offset>[];
+        final Offset delta = details.localPosition - _panStart;
+        final Offset parametricDelta = Offset(
+          delta.dx / curveModel.displaySize.width,
+          -delta.dy / curveModel.displaySize.height,
+        );
+        for (int i = 0; i < currentPoints.length; ++i) {
+          if (curveModel.selectedPoints.contains(i) && i != 0 && i != currentPoints.length - 1) {
+            final Offset newPosition = currentPoints[i] + parametricDelta;
+            newPoints.add(newPosition);
+          } else {
+            newPoints.add(currentPoints[i]);
           }
-          bool updated = curveModel.attemptUpdate(<Offset>[Offset.zero, ...newPoints, const Offset(1.0, 1.0)]);
-          if (updated) {
+        }
+        if (curveModel.attemptUpdate(newPoints)) {
+          setState(() {
             _panStart = _panStart + delta;
-          }
-//          print('Updated model: $updated $newPoints');
-        });
+          });
+        }
       },
       child: MouseRegion(
         onEnter: (PointerEnterEvent event) {

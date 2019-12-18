@@ -107,48 +107,186 @@ class _CurveExplorerState extends State<CurveExplorer> {
   }
 }
 
-class CurveDisplay extends StatelessWidget {
+class CurveDisplay extends StatefulWidget {
   const CurveDisplay({
-    this.color = Colors.blueGrey,
-    this.strokeWidth = 3.0,
+    this.curveColor = Colors.blueGrey,
+    this.lineColor = Colors.red,
+    this.hoverColor = Colors.red,
+    this.selectColor = Colors.blue,
+    this.curveStrokeWidth = 3.0,
+    this.controlPointRadius = 4.0,
+    this.lineStrokeWidth = 1.0,
   });
 
-  final Color color;
-  final double strokeWidth;
+  final Color curveColor;
+  final Color hoverColor;
+  final Color lineColor;
+  final Color selectColor;
+  final double controlPointRadius;
+  final double curveStrokeWidth;
+  final double lineStrokeWidth;
+
+  @override
+  _CurveDisplayState createState() => _CurveDisplayState();
+}
+
+class _CurveDisplayState extends State<CurveDisplay> {
+  CurvePainter curvePainter;
+  Offset mousePosition;
+  Offset _panStart;
+  int _currentDrag;
 
   @override
   Widget build(BuildContext context) {
     final CurveModel model = CurveModel.of(context);
-    return CustomPaint(
-      painter: CurvePainter(
-        model: model,
-        color: color,
-        strokeWidth: strokeWidth,
+    final int hoverIndex = model.hoverIndex;
+    curvePainter ??= CurvePainter();
+
+    curvePainter
+      ..model = model
+      ..mousePosition = mousePosition
+      ..curveColor = widget.curveColor
+      ..hoverColor = widget.hoverColor
+      ..lineColor = widget.lineColor
+      ..selectColor = widget.selectColor
+      ..controlPointRadius = widget.controlPointRadius
+      ..curveStrokeWidth = widget.curveStrokeWidth
+      ..lineStrokeWidth = widget.lineStrokeWidth;
+
+    return GestureDetector(
+      onTap: () {
+        if (hoverIndex < 1 || hoverIndex >= model.controlPoints.length - 1) {
+          // Nothing movable hovered over.
+          return;
+        }
+        if (LogicalKeyboardKey.collapseSynonyms(RawKeyboard.instance.keysPressed).contains(LogicalKeyboardKey.control)) {
+          if (model.selectedPoints.contains(hoverIndex)) {
+            model.removeFromSelection(hoverIndex);
+          } else {
+            model.addToSelection(hoverIndex);
+          }
+        }
+      },
+      onPanStart: (DragStartDetails details) {
+        setState(() {
+          if (hoverIndex != -1 && !model.selectedPoints.contains(hoverIndex)) {
+            _currentDrag = hoverIndex;
+            model.addToSelection(hoverIndex);
+          }
+          _panStart = details.localPosition;
+        });
+      },
+      onPanEnd: (DragEndDetails details) {
+        setState(() {
+          if (_currentDrag != null) {
+            model.removeFromSelection(_currentDrag);
+            _currentDrag = null;
+          }
+          _panStart = null;
+        });
+      },
+      onPanUpdate: (DragUpdateDetails details) {
+        if (model.selectedPoints.isEmpty) {
+          return;
+        }
+        final List<Offset> currentPoints = model.controlPoints;
+        final List<Offset> newPoints = <Offset>[];
+        final Offset delta = details.localPosition - _panStart;
+        final Offset parametricDelta = Offset(
+          delta.dx / model.displaySize.width,
+          -delta.dy / model.displaySize.height,
+        );
+        for (int i = 0; i < currentPoints.length; ++i) {
+          if (model.selectedPoints.contains(i) && i != 0 && i != currentPoints.length - 1) {
+            final Offset newPosition = currentPoints[i] + parametricDelta;
+            newPoints.add(newPosition);
+          } else {
+            newPoints.add(currentPoints[i]);
+          }
+        }
+        if (model.attemptUpdate(newPoints)) {
+          setState(() {
+            _panStart = _panStart + delta;
+          });
+        }
+      },
+      child: MouseRegion(
+        onEnter: (PointerEnterEvent event) {
+          setState(() {
+            mousePosition = event.localPosition;
+          });
+        },
+        onHover: (PointerHoverEvent event) {
+          setState(() {
+            mousePosition = event.localPosition;
+          });
+        },
+        onExit: (PointerExitEvent event) {
+          setState(() {
+            mousePosition = null;
+          });
+        },
+        child: CustomPaint(painter: curvePainter),
       ),
     );
   }
 }
 
 class CurvePainter extends CustomPainter {
-  const CurvePainter({
+  CurvePainter({
     this.model,
-    this.color = Colors.blueGrey,
-    this.strokeWidth = 3.0,
+    this.curveColor = Colors.blueGrey,
+    this.lineColor = Colors.red,
+    this.hoverColor = Colors.red,
+    this.selectColor = Colors.blue,
+    this.curveStrokeWidth = 3.0,
+    this.controlPointRadius = 4.0,
+    this.mousePosition,
   });
 
-  final CurveModel model;
-  final Color color;
-  final double strokeWidth;
+  CurveModel model;
+  Color curveColor;
+  Color hoverColor;
+  Color lineColor;
+  Color selectColor;
+  double controlPointRadius;
+  double curveStrokeWidth;
+  double lineStrokeWidth;
+  Offset mousePosition;
+
+  Offset transform(Offset point, Size size) {
+    assert(point.dx <= 1.0 && point.dx >= 0.0);
+    assert(point.dy <= 1.0 && point.dy >= 0.0);
+    return Offset(point.dx * size.width, (1.0 - point.dy) * size.height);
+  }
+
+  void paintControlPolyline(Canvas canvas, Size size) {
+    final Path path = Path();
+    final Paint paint = Paint()
+      ..color = curveColor
+      ..strokeWidth = curveStrokeWidth
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    List<Offset> points = model.controlPoints.map<Offset>((Offset point) => transform(point, size)).toList();
+
+    path.moveTo(points[0].dx, points[0].dy);
+    for (int i = 1; i < model.controlPoints.length; ++i) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    canvas.drawPath(path, paint);
+  }
 
   @override
-  void paint(Canvas canvas, Size size) {
+  void paintCurve(Canvas canvas, Size size) {
     if (model.displaySize != size) {
       model.displaySize = size;
     }
     final Path path = Path();
     final Paint paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
+      ..color = curveColor
+      ..strokeWidth = curveStrokeWidth
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -160,19 +298,64 @@ class CurvePainter extends CustomPainter {
     );
     print('regen curve: ${points.length}');
     for (int i = 0; i < points.length; ++i) {
-      Offset point = points[i].value;
+      Offset point = transform(points[i].value, size);
       if (i == 0) {
-        path.moveTo(point.dx * size.width, (1.0 - point.dy) * size.height);
+        path.moveTo(point.dx, point.dy);
       } else {
-        path.lineTo(point.dx * size.width, (1.0 - point.dy) * size.height);
+        path.lineTo(point.dx, point.dy);
       }
     }
     canvas.drawPath(path, paint);
   }
 
+  void paintControlPoints(Canvas canvas, Size size) {
+    for (int i = 0; i < model.controlPoints.length; ++i) {
+      final Offset controlPoint = model.controlPoints[i];
+      _lastPoint = transform(controlPoint, size);
+      if (mousePosition != null) {
+        double distance = (_lastPoint - mousePosition).distance;
+        if (distance < hitRadius) {
+          model.hoverIndex = i;
+        }
+      } else {
+        if (model.hoverIndex == i) {
+          model.hoverIndex = null;
+        }
+      }
+      final bool hovering = model.hoverIndex == i;
+      final bool selected = model.selectedPoints.contains(i);
+      final Paint paint = Paint()
+        ..color = (!hovering && !selected) ? curveColor : hovering ? hoverColor : selectColor
+        ..strokeWidth = curveStrokeWidth
+        ..strokeJoin = StrokeJoin.round
+        ..style = (hovering || selected) ? PaintingStyle.fill : PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+      canvas.drawCircle(_lastPoint, controlPointRadius, paint);
+    }
+  }
+
+  @override
+  bool hitTest(Offset position) {
+    final double hitRadius = controlPointRadius + 4;
+    final double hitRadiusSquared = hitRadius * hitRadius;
+    for (Offset point in model.controlPoints) {
+      if ((position - point).distanceSquared < hitRadiusSquared) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    paintCurve(canvas, size);
+    paintControlPolyline(canvas, size);
+    paintControlPoints(canvas, size);
+  }
+
   @override
   bool shouldRepaint(CurvePainter oldDelegate) {
-    return model.curve != oldDelegate.model.curve || color != oldDelegate.color || strokeWidth != oldDelegate.strokeWidth;
+    return model.controlPoints != oldDelegate.model.controlPoints || curveColor != oldDelegate.curveColor || curveStrokeWidth != oldDelegate.curveStrokeWidth;
   }
 }
 
@@ -209,30 +392,8 @@ class ControlPolylinePainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
 
-  Offset transform(Offset point, Size size) {
-    assert(point.dx <= 1.0 && point.dx >= 0.0);
-    assert(point.dy <= 1.0 && point.dy >= 0.0);
-    return Offset(point.dx * size.width, (1.0 - point.dy) * size.height);
-  }
-
   @override
-  void paint(Canvas canvas, Size size) {
-    final Path path = Path();
-    final Paint paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    List<Offset> points = curveModel.controlPoints.map<Offset>((Offset point) => transform(point, size)).toList();
-
-    path.moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < curveModel.controlPoints.length; ++i) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    canvas.drawPath(path, paint);
-  }
+  void paint(Canvas canvas, Size size) {}
 
   @override
   bool shouldRepaint(ControlPolylinePainter oldDelegate) {
@@ -249,39 +410,39 @@ class ControlPointDisplay extends StatefulWidget {
 
 class _ControlPointDisplayState extends State<ControlPointDisplay> {
   List<bool> hovered = <bool>[];
-  Offset lastMousePosition;
+  Offset mousePosition;
   Offset _panStart;
   int _currentDrag;
 
   @override
   Widget build(BuildContext context) {
-    CurveModel curveModel = CurveModel.of(context);
+    CurveModel model = CurveModel.of(context);
 
-    if (curveModel.controlPoints.length != hovered.length) {
-      hovered = List<bool>.generate(curveModel.controlPoints.length, (int index) => false);
+    if (model.controlPoints.length != hovered.length) {
+      hovered = List<bool>.generate(model.controlPoints.length, (int index) => false);
     }
 
     return GestureDetector(
       onTap: () {
         final int hoveredIndex = hovered.indexOf(true);
-        if (hoveredIndex < 0 || hoveredIndex >= curveModel.controlPoints.length) {
+        if (hoveredIndex < 0 || hoveredIndex >= model.controlPoints.length) {
           // Nothing movable hovered over.
           return;
         }
         if (LogicalKeyboardKey.collapseSynonyms(RawKeyboard.instance.keysPressed).contains(LogicalKeyboardKey.control)) {
-          if (curveModel.selectedPoints.contains(hoveredIndex)) {
-            curveModel.removeFromSelection(hoveredIndex);
+          if (model.selectedPoints.contains(hoveredIndex)) {
+            model.removeFromSelection(hoveredIndex);
           } else {
-            curveModel.addToSelection(hoveredIndex);
+            model.addToSelection(hoveredIndex);
           }
         }
       },
       onPanStart: (DragStartDetails details) {
         setState(() {
           final int hoveredIndex = hovered.indexOf(true);
-          if (hoveredIndex != -1 && !curveModel.selectedPoints.contains(hoveredIndex)) {
+          if (hoveredIndex != -1 && !model.selectedPoints.contains(hoveredIndex)) {
             _currentDrag = hoveredIndex;
-            curveModel.addToSelection(hoveredIndex);
+            model.addToSelection(hoveredIndex);
           }
           _panStart = details.localPosition;
         });
@@ -289,32 +450,32 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
       onPanEnd: (DragEndDetails details) {
         setState(() {
           if (_currentDrag != null) {
-            curveModel.removeFromSelection(_currentDrag);
+            model.removeFromSelection(_currentDrag);
             _currentDrag = null;
           }
           _panStart = null;
         });
       },
       onPanUpdate: (DragUpdateDetails details) {
-        if (curveModel.selectedPoints.isEmpty) {
+        if (model.selectedPoints.isEmpty) {
           return;
         }
-        final List<Offset> currentPoints = curveModel.controlPoints;
+        final List<Offset> currentPoints = model.controlPoints;
         final List<Offset> newPoints = <Offset>[];
         final Offset delta = details.localPosition - _panStart;
         final Offset parametricDelta = Offset(
-          delta.dx / curveModel.displaySize.width,
-          -delta.dy / curveModel.displaySize.height,
+          delta.dx / model.displaySize.width,
+          -delta.dy / model.displaySize.height,
         );
         for (int i = 0; i < currentPoints.length; ++i) {
-          if (curveModel.selectedPoints.contains(i) && i != 0 && i != currentPoints.length - 1) {
+          if (model.selectedPoints.contains(i) && i != 0 && i != currentPoints.length - 1) {
             final Offset newPosition = currentPoints[i] + parametricDelta;
             newPoints.add(newPosition);
           } else {
             newPoints.add(currentPoints[i]);
           }
         }
-        if (curveModel.attemptUpdate(newPoints)) {
+        if (model.attemptUpdate(newPoints)) {
           setState(() {
             _panStart = _panStart + delta;
           });
@@ -323,30 +484,30 @@ class _ControlPointDisplayState extends State<ControlPointDisplay> {
       child: MouseRegion(
         onEnter: (PointerEnterEvent event) {
           setState(() {
-            lastMousePosition = event.localPosition;
+            mousePosition = event.localPosition;
           });
         },
         onHover: (PointerHoverEvent event) {
           setState(() {
-            lastMousePosition = event.localPosition;
+            mousePosition = event.localPosition;
           });
         },
         onExit: (PointerExitEvent event) {
           setState(() {
-            lastMousePosition = null;
+            mousePosition = null;
           });
         },
         child: Stack(
           fit: StackFit.expand,
-          children: List<Widget>.generate(curveModel.controlPoints.length, (int index) {
-            final Offset point = curveModel.controlPoints[index];
+          children: List<Widget>.generate(model.controlPoints.length, (int index) {
+            final Offset point = model.controlPoints[index];
             return CustomPaint(
               painter: ControlPointPainter(
                 controlPoint: point,
                 index: index,
                 hover: hovered,
                 select: CurveModel.of(context).selectedPoints.contains(index),
-                mousePosition: lastMousePosition,
+                mousePosition: mousePosition,
               ),
             );
           }).toList(),

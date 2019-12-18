@@ -23,8 +23,8 @@ abstract class CurveModel extends Model {
 
   List<Offset> get controlPoints;
   Set<int> get selectedPoints;
-  int get hoveredIndex;
-  set hoveredIndex(int value);
+  int get hoverIndex;
+  set hoverIndex(int value);
   double get tension;
   set tension(double value);
   Curve get curve;
@@ -74,9 +74,9 @@ class CatmullRomModel extends CurveModel {
 
 
   @override
-  int get hoveredIndex => _hoveredIndex;
+  int get hoverIndex => _hoveredIndex;
   int _hoveredIndex;
-  set hoveredIndex(int hoveredIndex) {
+  set hoverIndex(int hoveredIndex) {
     if (hoveredIndex != _hoveredIndex) {
       _hoveredIndex = hoveredIndex;
       notifyListeners();

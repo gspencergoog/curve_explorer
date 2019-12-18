@@ -25,6 +25,8 @@ abstract class CurveModel extends Model {
   Set<int> get selectedPoints;
   int get hoveredIndex;
   set hoveredIndex(int value);
+  double get tension;
+  set tension(double value);
   Curve get curve;
 
   Size displaySize = Size.zero;
@@ -60,6 +62,16 @@ class CatmullRomModel extends CurveModel {
 
   @override
   final Set<int> selectedPoints;
+
+  @override
+  double get tension => curve.tension;
+  set tension(double tension) {
+    if (tension != curve.tension) {
+      curve = CatmullRomCurve(controlPoints, tension: tension);
+      notifyListeners();
+    }
+  }
+
 
   @override
   int get hoveredIndex => _hoveredIndex;

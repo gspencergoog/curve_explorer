@@ -64,20 +64,38 @@ class _CurveExplorerState extends State<CurveExplorer> {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
-                  child: Graph(
-                    min: 0.0,
-                    max: 1.0,
-                    majorTickColor: Colors.black,
-                    minorTickColor: Colors.grey,
-                    textStyle: Theme.of(context).textTheme.body1,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: <Widget>[
-                        CurveDisplay(),
-                        Positioned(child: ControlPolylineDisplay()),
-                        Positioned(child: ControlPointDisplay()),
-                      ],
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Slider(
+                        value: model.tension,
+                        min: 0.0,
+                        max: 1.0,
+                        onChanged: (double value) {
+                          setState(() {
+                            model.tension = value;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Graph(
+                          min: 0.0,
+                          max: 1.0,
+                          majorTickColor: Colors.black,
+                          minorTickColor: Colors.grey,
+                          textStyle: Theme.of(context).textTheme.body1,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: <Widget>[
+                              CurveDisplay(),
+                              Positioned(child: ControlPolylineDisplay()),
+                              Positioned(child: ControlPointDisplay()),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );

@@ -62,34 +62,39 @@ class _CurveExplorerState extends State<CurveExplorer> {
           ),
           body: Builder(
             builder: (BuildContext context) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Slider(
-                        value: model.tension,
-                        min: 0.0,
-                        max: 1.0,
-                        onChanged: (double value) {
-                          setState(() {
-                            model.tension = value;
-                          });
-                        },
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Graph(
-                          minX: 0.0,
-                          maxX: 1.0,
-                          majorTickColor: Colors.black,
-                          minorTickColor: Colors.grey,
-                          textStyle: Theme.of(context).textTheme.body1,
-                          child: CurveDisplay(),
+              return Focus(
+                autofocus: true,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Slider(
+                          value: model.tension,
+                          min: 0.0,
+                          max: 1.0,
+                          onChanged: (double value) {
+                            setState(() {
+                              if (model.attemptUpdate(model.controlPoints, value)) {
+                                model.tension = value;
+                              }
+                            });
+                          },
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          flex: 1,
+                          child: Graph(
+                            minX: 0.0,
+                            maxX: 1.0,
+                            majorTickColor: Colors.black,
+                            minorTickColor: Colors.grey,
+                            textStyle: Theme.of(context).textTheme.body1,
+                            child: CurveDisplay(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

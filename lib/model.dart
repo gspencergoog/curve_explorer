@@ -33,7 +33,7 @@ abstract class CurveModel extends Model {
   /// Tries to update the curve with the given information.
   ///
   /// Returns true if successful.
-  bool attemptUpdate(List<Offset> controlPoints);
+  bool attemptUpdate(List<Offset> controlPoints, double tension);
 
   /// The list of control point indices that are selected.
   final Set<int> selection;
@@ -46,6 +46,7 @@ abstract class CurveModel extends Model {
   /// Returns true if the point was not already in the selection.
   bool addToSelection(int selected) {
     if (selection.add(selected)) {
+      print('Adding $selected to selection');
       notifyListeners();
       return true;
     }
@@ -55,6 +56,7 @@ abstract class CurveModel extends Model {
   /// Clears the set of currently selected points.
   void clearSelection() {
     if (selection.isNotEmpty) {
+      print('Clearing selection.');
       selection.clear();
       notifyListeners();
     }
@@ -65,6 +67,7 @@ abstract class CurveModel extends Model {
   /// Returns true if the point existed and was removed from the selection.
   bool removeFromSelection(int selected) {
     if (selection.remove(selected)) {
+      print('Removing $selected from selection');
       notifyListeners();
       return true;
     }

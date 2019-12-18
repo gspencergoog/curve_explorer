@@ -21,6 +21,8 @@ class CurveDisplay extends StatefulWidget {
     this.curveStrokeWidth = 3.0,
     this.controlPointRadius = 4.0,
     this.lineStrokeWidth = 1.0,
+    this.minY = -0.5,
+    this.maxY = 1.5,
   });
 
   final Color curveColor;
@@ -30,6 +32,8 @@ class CurveDisplay extends StatefulWidget {
   final double controlPointRadius;
   final double curveStrokeWidth;
   final double lineStrokeWidth;
+  final double minY;
+  final double maxY;
 
   @override
   _CurveDisplayState createState() => _CurveDisplayState();
@@ -60,6 +64,9 @@ class _CurveDisplayState extends State<CurveDisplay> {
     if (model.selection.difference(_selection).isNotEmpty) {
       _selection = Set<int>.from(model.selection);
     }
+    if (model.selection.isEmpty != _selection.isEmpty) {
+      _selection = <int>{};
+    }
     final int hoverIndex = model.hoverIndex;
     return ConstrainedBox(
       constraints: BoxConstraints.expand(),
@@ -81,7 +88,8 @@ class _CurveDisplayState extends State<CurveDisplay> {
         },
         child: GestureDetector(
           onTap: () {
-            print('tapped $hoverIndex');
+            final Set<LogicalKeyboardKey> pressed = LogicalKeyboardKey.collapseSynonyms(RawKeyboard.instance.keysPressed);
+            print('tapped $hoverIndex $pressed');
             if (hoverIndex == null) {
               // Nothing hovered over, so just clear the selection.
               print('clearing selection');
@@ -90,7 +98,7 @@ class _CurveDisplayState extends State<CurveDisplay> {
                 _selection = <int>{};
               });
             }
-            if (LogicalKeyboardKey.collapseSynonyms(RawKeyboard.instance.keysPressed).contains(LogicalKeyboardKey.control)) {
+            if (pressed.contains(LogicalKeyboardKey.control)) {
               if (model.isSelected(hoverIndex)) {
                 model.removeFromSelection(hoverIndex);
               } else {
@@ -129,13 +137,16 @@ class _CurveDisplayState extends State<CurveDisplay> {
             );
             for (int i = 0; i < currentPoints.length; ++i) {
               if (model.isSelected(i) && i != 0 && i != currentPoints.length - 1) {
-                final Offset newPosition = currentPoints[i] + parametricDelta;
+                final Offset newPosition = Offset(
+                  currentPoints[i].dx + parametricDelta.dx,
+                  currentPoints[i].dy + (parametricDelta.dy * (widget.maxY - widget.minY)),
+                );
                 newPoints.add(newPosition);
               } else {
                 newPoints.add(currentPoints[i]);
               }
             }
-            if (model.attemptUpdate(newPoints)) {
+            if (model.attemptUpdate(newPoints, _tension)) {
               setState(() {
                 _panStart = _panStart + delta;
               });
@@ -155,6 +166,7 @@ class _CurveDisplayState extends State<CurveDisplay> {
                   curveStrokeWidth: widget.curveStrokeWidth,
                   lineStrokeWidth: widget.lineStrokeWidth,
                   tension: _tension,
+                  yGrid: <double>{0.0, 1.0},
                   hoverChanged: (int value) {
                     return model.hoverIndex = value;
                   },
@@ -167,6 +179,8 @@ class _CurveDisplayState extends State<CurveDisplay> {
                   controlPoints: _controlPoints,
                   selectedPoints: _selection,
                   points: _points,
+                  minY: widget.minY,
+                  maxY: widget.maxY,
                 ),
               );
             },
@@ -189,12 +203,16 @@ class CurvePainter extends CustomPainter {
     @required this.mousePosition,
     this.curveColor = Colors.blueGrey,
     this.lineColor = Colors.red,
+    this.gridColor = Colors.black12,
     this.pointColor = Colors.red,
     this.pointHoverColor = Colors.red,
     this.pointSelectColor = Colors.blue,
     this.curveStrokeWidth = 3.0,
     this.lineStrokeWidth = 1.0,
     this.controlPointRadius = 4.0,
+    this.minY = -0.5,
+    this.maxY = 1.5,
+    this.yGrid = const <double>{},
   });
 
   List<Curve2DSample> points;
@@ -207,18 +225,21 @@ class CurvePainter extends CustomPainter {
   Offset mousePosition;
   Color curveColor;
   Color lineColor;
+  Color gridColor;
   Color pointHoverColor;
   Color pointSelectColor;
   Color pointColor;
   double controlPointRadius;
   double curveStrokeWidth;
   double lineStrokeWidth;
-  Size _lastSize;
+  double minY;
+  double maxY;
+  Set<double> yGrid;
 
   Offset transform(Offset point, Size size) {
     double x = point.dx.clamp(0.0, 1.0);
-    double y = point.dy.clamp(0.0, 1.0);
-    return Offset(x * size.width, (1.0 - y) * size.height);
+    double y = point.dy.clamp(minY, maxY);
+    return Offset(x * size.width, (1.0 - ((y - minY) / (maxY - minY))) * size.height);
   }
 
   void paintControlPolyline(Canvas canvas, Size size) {
@@ -259,6 +280,21 @@ class CurvePainter extends CustomPainter {
     canvas.drawPath(path, paint);
   }
 
+  void paintGridLines(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = gridColor
+      ..strokeWidth = lineStrokeWidth
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    for (double location in yGrid) {
+      final Offset start = Offset(0.0, location);
+      final Offset end = Offset(1.0, location);
+      canvas.drawLine(transform(start, size), transform(end,size), paint);
+    }
+  }
+
   void paintControlPoints(Canvas canvas, Size size) {
     final double hitRadius = controlPointRadius + 4;
     final double hitRadiusSquared = hitRadius * hitRadius;
@@ -291,25 +327,13 @@ class CurvePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _lastSize = size;
     graphSizeChanged?.call(size);
 
     paintCurve(canvas, size);
     paintControlPolyline(canvas, size);
     paintControlPoints(canvas, size);
+    paintGridLines(canvas, size);
   }
-
-//  @override
-//  bool hitTest(Offset position) {
-//    final double hitRadius = controlPointRadius + 4;
-//    final double hitRadiusSquared = hitRadius * hitRadius;
-//    for (Offset point in controlPoints) {
-//      if ((position - transform(point, _lastSize)).distanceSquared < hitRadiusSquared) {
-//        return true;
-//      }
-//    }
-//    return false;
-//  }
 
   @override
   bool shouldRepaint(CurvePainter oldDelegate) {
@@ -328,13 +352,13 @@ class CurvePainter extends CustomPainter {
       'curveStrokeWidth': curveStrokeWidth != oldDelegate.curveStrokeWidth,
       'lineStrokeWidth': lineStrokeWidth != oldDelegate.lineStrokeWidth
     };
-    if (reasons.values.contains(true)) {
-      for (String reason in reasons.keys) {
-        if (reasons[reason] && reason != 'mousePosition') {
-          print('Repainting: $reason changed.');
-        }
-      }
-    }
+//    if (reasons.values.contains(true)) {
+//      for (String reason in reasons.keys) {
+//        if (reasons[reason] && reason != 'mousePosition') {
+//          print('Repainting: $reason changed.');
+//        }
+//      }
+//    }
     return reasons.values.contains(true);
   }
 }

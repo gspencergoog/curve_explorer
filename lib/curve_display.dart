@@ -89,9 +89,37 @@ class _CurveDisplayState extends State<CurveDisplay> {
           });
         },
         child: GestureDetector(
+          onDoubleTap: () {
+            print('received double tap');
+            if (mousePosition == null) {
+              return;
+            }
+            if (model.hoverIndex != null) {
+              if (model.controlPoints.length <= 2) {
+                // Don't remove any points if we wouldn't have enough for a curve.
+                return;
+              }
+              final List<Offset> points = model.controlPoints.toList();
+              print('Removing point at ${model.controlPoints[model.hoverIndex]}');
+              points.removeAt(model.hoverIndex);
+              if (model.attemptUpdate(points, _tension)) {
+                model.hoverIndex = null;
+              }
+              return;
+            }
+            final double x = mousePosition.dx/model.displaySize.width;
+            final double y = model.curve.transform(x);
+            final List<Offset> points = model.controlPoints.toList();
+            final Offset newPoint = Offset(x, y);
+            print('Adding point at $newPoint');
+            points.add(newPoint);
+            points.sort((Offset a, Offset b) {
+              return a.dx.compareTo(b.dx);
+            });
+            model.attemptUpdate(points, _tension);
+          },
           onTap: () {
             final Set<LogicalKeyboardKey> pressed = LogicalKeyboardKey.collapseSynonyms(RawKeyboard.instance.keysPressed);
-            print('tapped $hoverIndex $pressed');
             if (hoverIndex == null) {
               // Nothing hovered over, so just clear the selection.
               print('clearing selection');

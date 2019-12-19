@@ -195,7 +195,6 @@ class _PlayPauseButtonState extends State<PlayPauseButton> {
               iconSize: 50.0,
               icon: Icon(widget.animation.isAnimating ? Icons.pause : Icons.play_arrow),
               onPressed: () {
-                debugDumpFocusTree();
                 setState(() {
                   playing = !playing;
                   widget.onPressed(playing, bouncing);

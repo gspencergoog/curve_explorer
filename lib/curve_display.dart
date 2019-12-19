@@ -273,6 +273,7 @@ class CurvePainter extends CustomPainter {
   Animation<double> animation;
 
   double _lastAnimation = 0.0;
+  static const double hitRadiusExpansion = 16.0;
 
   Offset transform(Offset point, Size size) {
     double x = point.dx.clamp(0.0, 1.0);
@@ -361,7 +362,7 @@ class CurvePainter extends CustomPainter {
   }
 
   void paintControlPoints(Canvas canvas, Size size) {
-    final double hitRadius = controlPointRadius + 4;
+    final double hitRadius = controlPointRadius + hitRadiusExpansion;
     final double hitRadiusSquared = hitRadius * hitRadius;
     for (int i = 0; i < controlPoints.length; ++i) {
       final Offset controlPoint = controlPoints[i];

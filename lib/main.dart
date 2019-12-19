@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -162,6 +161,14 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                           ),
                         ],
                       ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          'Double-tap on graph to create a new control point. Double-tap on point to remove a control point.',
+                          style: Theme.of(context).textTheme.caption,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -238,7 +245,24 @@ class SliderPanel extends StatelessWidget {
   }
 }
 
-class CodeDisplay extends StatelessWidget {
+class CodeDisplay extends StatefulWidget {
+  CodeDisplay({
+    Key key,
+    this.focusColor = Colors.blue,
+    this.borderColor = Colors.black45,
+  }) : super(key: key);
+
+  final Color focusColor;
+  final Color borderColor;
+
+  @override
+  _CodeDisplayState createState() => _CodeDisplayState();
+}
+
+class _CodeDisplayState extends State<CodeDisplay> {
+  final FocusNode focusNode = FocusNode(debugLabel: 'CodeDisplay');
+  Color borderColor;
+
   static const TextStyle type = TextStyle(
     color: Colors.green,
     fontFamily: 'FiraCodeBold',
@@ -266,6 +290,26 @@ class CodeDisplay extends StatelessWidget {
   );
 
   @override
+  void initState() {
+    super.initState();
+    focusNode.addListener(_handleFocusChange);
+    borderColor = focusNode.hasFocus ? widget.focusColor : widget.borderColor;
+  }
+
+  @override
+  void dispose() {
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChange() {
+    print('focus: $focusNode');
+    setState(() {
+      borderColor = focusNode.hasFocus ? widget.focusColor : widget.borderColor;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ScopedModelDescendant<CurveModel>(
       builder: (context, child, model) {
@@ -275,8 +319,8 @@ class CodeDisplay extends StatelessWidget {
             TextSpan(text: '(<', style: punctuation),
             TextSpan(text: '$Offset', style: type),
             TextSpan(text: '>[', style: punctuation),
-            ...List<TextSpan>.generate(model.controlPoints.length, (int index) {
-              final Offset point = model.controlPoints[index];
+            ...List<TextSpan>.generate(model.controlPoints.length - 2, (int index) {
+              final Offset point = model.controlPoints[index + 1];
               return TextSpan(children: <TextSpan>[
                 TextSpan(text: 'Offset', style: type),
                 TextSpan(text: '(', style: punctuation),
@@ -284,7 +328,7 @@ class CodeDisplay extends StatelessWidget {
                 TextSpan(text: ', ', style: punctuation),
                 TextSpan(text: '${point.dy.toStringAsFixed(2)}', style: value),
                 TextSpan(text: ')', style: punctuation),
-                if (index != model.controlPoints.length - 1) TextSpan(text: ', ', style: punctuation),
+                if (index != model.controlPoints.length - 3) TextSpan(text: ', ', style: punctuation),
               ]);
             }),
             TextSpan(text: '], ', style: punctuation),
@@ -294,8 +338,21 @@ class CodeDisplay extends StatelessWidget {
           ],
         );
 
-        return SelectableText.rich(
-          span,
+        return Container(
+          padding: const EdgeInsets.all(8.0),
+          decoration: new BoxDecoration(
+            borderRadius: BorderRadius.all(
+              Radius.circular(8.0),
+            ),
+            border: new Border.all(
+              color: borderColor,
+              width: 2.0,
+            ),
+          ),
+          child: SelectableText.rich(
+            span,
+            focusNode: focusNode,
+          ),
         );
       },
     );

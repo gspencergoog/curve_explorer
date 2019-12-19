@@ -13,7 +13,7 @@ enum CurveType {
 abstract class CurveModel extends Model {
   CurveModel._() : selection = <int>{};
 
-      factory CurveModel(CurveType type) {
+  factory CurveModel(CurveType type) {
     switch (type) {
       case CurveType.catmullRom:
         return CatmullRomModel();
@@ -29,6 +29,8 @@ abstract class CurveModel extends Model {
   Curve get curve;
 
   Size displaySize = Size.zero;
+
+  void reset();
 
   /// Tries to update the curve with the given information.
   ///
@@ -78,15 +80,28 @@ abstract class CurveModel extends Model {
 }
 
 class CatmullRomModel extends CurveModel {
-  CatmullRomModel({List<Offset> controlPoints, double tension})
+  CatmullRomModel({List<Offset> controlPoints = _defaultControlPoints, double tension = _defaultTension})
       : _hoveredIndex = null,
+        _initialTension = tension,
+        _initialControlPoints = controlPoints,
         super._() {
     curve = CatmullRomCurve(controlPoints, tension: tension);
   }
 
+  static const List<Offset> _defaultControlPoints = const <Offset>[
+    Offset(0.0, 0.0),
+    Offset(0.25, 0.25),
+    Offset(0.5, 0.5),
+    Offset(0.75, 0.75),
+    Offset(1.0, 1.0),
+  ];
+  static const double _defaultTension = 0.0;
+
+  final List<Offset> _initialControlPoints;
+  final double _initialTension;
+
   @override
   List<Offset> get controlPoints => curve.controlPoints;
-
 
   @override
   double get tension => curve.tension;
@@ -133,4 +148,9 @@ class CatmullRomModel extends CurveModel {
     return true;
   }
 
+  @override
+  void reset() {
+    curve = CatmullRomCurve(_initialControlPoints, tension: _initialTension);
+    notifyListeners();
+  }
 }

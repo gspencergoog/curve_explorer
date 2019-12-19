@@ -37,19 +37,11 @@ class CurveExplorer extends StatefulWidget {
 }
 
 class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProviderStateMixin {
-  static const List<Offset> _initialControlPoints = const <Offset>[
-    Offset(0.0, 0.0),
-    Offset(0.25, 0.25),
-    Offset(0.5, 0.5),
-    Offset(0.75, 0.75),
-    Offset(1.0, 1.0),
-  ];
-
   @override
   void initState() {
     super.initState();
     duration = Duration(seconds: 1);
-    model = CatmullRomModel(controlPoints: _initialControlPoints, tension: 0.0);
+    model = CatmullRomModel();
     controller = AnimationController(vsync: this, duration: duration);
   }
 
@@ -72,6 +64,12 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
         home: Scaffold(
           appBar: AppBar(
             title: const Text('Curve Explorer'),
+          ),
+          floatingActionButton: FloatingActionButton(
+            child: Icon(Icons.refresh),
+            onPressed: () {
+              model.reset();
+            },
           ),
           body: Builder(
             builder: (BuildContext context) {
@@ -124,52 +122,53 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                               );
                             },
                           ),
-                          SliderPanel(
-                            configs: <SliderConfig>[
-                              SliderConfig(
-                                title: 'Duration',
-                                label: '${duration.inMilliseconds}ms',
-                                value: duration.inMilliseconds.toDouble(),
-                                min: 10,
-                                max: 5000,
-                                divisions: 100,
-                                onChanged: (double value) {
-                                  if (duration.inMilliseconds.toDouble() == value) {
-                                    return;
-                                  }
-                                  setState(() {
-                                    setDurationTimer?.cancel();
-                                    duration = Duration(milliseconds: value.round());
-                                    controller.duration = duration;
-                                    setDurationTimer = Timer(
-                                      const Duration(milliseconds: 200),
-                                      () {
-                                        if (controller.isAnimating) {
-                                          controller.stop();
-                                          controller.repeat();
-                                        }
-                                        setDurationTimer = null;
-                                      },
-                                    );
-                                  });
-                                },
-                              ),
-                              SliderConfig(
-                                title: 'Tension',
-                                label: model.tension.toStringAsFixed(2),
-                                value: model.tension,
-                                onChanged: (double value) {
-                                  setState(() {
-                                    if (model.attemptUpdate(model.controlPoints, value)) {
-                                      model.tension = value;
+                          ScopedModelDescendant<CurveModel>(builder: (context, child, model) {
+                            return SliderPanel(
+                              configs: <SliderConfig>[
+                                SliderConfig(
+                                  title: 'Duration',
+                                  label: '${duration.inMilliseconds}ms',
+                                  value: duration.inMilliseconds.toDouble(),
+                                  min: 10,
+                                  max: 5000,
+                                  divisions: 100,
+                                  onChanged: (double value) {
+                                    if (duration.inMilliseconds.toDouble() == value) {
+                                      return;
                                     }
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
+                                    setState(() {
+                                      setDurationTimer?.cancel();
+                                      duration = Duration(milliseconds: value.round());
+                                      controller.duration = duration;
+                                      setDurationTimer = Timer(
+                                        const Duration(milliseconds: 500),
+                                        () {
+                                          if (controller.isAnimating) {
+                                            controller.stop();
+                                            controller.repeat();
+                                          }
+                                          setDurationTimer = null;
+                                        },
+                                      );
+                                    });
+                                  },
+                                ),
+                                SliderConfig(
+                                  title: 'Tension',
+                                  label: model.tension.toStringAsFixed(2),
+                                  value: model.tension,
+                                  onChanged: (double value) {
+                                    setState(() {
+                                      model.attemptUpdate(model.controlPoints, value);
+                                    });
+                                  },
+                                ),
+                              ],
+                            );
+                          }),
                         ],
                       ),
+                      CodeDisplay(),
                     ],
                   ),
                 ),
@@ -223,7 +222,10 @@ class SliderPanel extends StatelessWidget {
         children: List<TableRow>.generate(configs.length, (int index) {
           return TableRow(
             children: <Widget>[
-              Text(configs[index].title, textAlign: TextAlign.end,),
+              Text(
+                configs[index].title,
+                textAlign: TextAlign.end,
+              ),
               Slider(
                 min: configs[index].min,
                 max: configs[index].max,
@@ -231,11 +233,78 @@ class SliderPanel extends StatelessWidget {
                 value: configs[index].value,
                 onChanged: configs[index].onChanged,
               ),
-              Text(configs[index].label, textAlign: TextAlign.start,),
+              Text(
+                configs[index].label,
+                textAlign: TextAlign.start,
+              ),
             ],
           );
         }),
       ),
+    );
+  }
+}
+
+class CodeDisplay extends StatelessWidget {
+  static const TextStyle type = TextStyle(
+    color: Colors.green,
+    fontFamily: 'FiraCodeBold',
+    fontWeight: FontWeight.bold,
+    fontSize: 12.0,
+  );
+
+  static const TextStyle value = TextStyle(
+    color: Colors.black87,
+    fontFamily: 'FiraCode',
+    fontSize: 12.0,
+  );
+
+  static const TextStyle argument = TextStyle(
+    color: Colors.blueAccent,
+    fontFamily: 'FiraCodeBold',
+    fontWeight: FontWeight.bold,
+    fontSize: 12.0,
+  );
+
+  static const TextStyle punctuation = TextStyle(
+    color: Colors.black54,
+    fontFamily: 'FiraCodeLight',
+    fontSize: 12.0,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return ScopedModelDescendant<CurveModel>(
+      builder: (context, child, model) {
+        TextSpan span = TextSpan(
+          children: <TextSpan>[
+            TextSpan(text: '$CatmullRomCurve', style: type),
+            TextSpan(text: '(<', style: punctuation),
+            TextSpan(text: '$Offset', style: type),
+            TextSpan(text: '>[', style: punctuation),
+            ...List<TextSpan>.generate(model.controlPoints.length, (int index) {
+              final Offset point = model.controlPoints[index];
+              return TextSpan(children: <TextSpan>[
+                TextSpan(text: 'Offset', style: type),
+                TextSpan(text: '(', style: punctuation),
+                TextSpan(text: '${point.dx.toStringAsFixed(2)}', style: value),
+                TextSpan(text: ', ', style: punctuation),
+                TextSpan(text: '${point.dy.toStringAsFixed(2)}', style: value),
+                TextSpan(text: ')', style: punctuation),
+                if (index != model.controlPoints.length - 1) TextSpan(text: ', ', style: punctuation),
+              ]);
+            }),
+            TextSpan(text: '], ', style: punctuation),
+            TextSpan(text: 'tension: ', style: argument),
+            TextSpan(text: '${model.tension.toStringAsFixed(2)}', style: value),
+            TextSpan(text: ');', style: punctuation),
+          ],
+        );
+
+        return SelectableText.rich(
+          span,
+        );
+      },
     );
   }
 }

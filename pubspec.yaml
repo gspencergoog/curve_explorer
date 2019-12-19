@@ -18,3 +18,20 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: FiraCode
+      fonts:
+        - asset: fonts/FiraCode-Regular.ttf
+          style: normal
+    - family: FiraCodeBold
+      fonts:
+        - asset: fonts/FiraCode-Bold.ttf
+          style: normal
+    - family: FiraCodeLight
+      fonts:
+        - asset: fonts/FiraCode-Light.ttf
+          style: normal
+    - family: FiraCodeMedium
+      fonts:
+        - asset: fonts/FiraCode-Medium.ttf
+          style: normal

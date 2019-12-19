@@ -84,18 +84,6 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Slider(
-                          value: model.tension,
-                          min: 0.0,
-                          max: 1.0,
-                          onChanged: (double value) {
-                            setState(() {
-                              if (model.attemptUpdate(model.controlPoints, value)) {
-                                model.tension = value;
-                              }
-                            });
-                          },
-                        ),
                         Expanded(
                           flex: 1,
                           child: Graph(
@@ -173,6 +161,29 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                                 Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Text('${duration.inMilliseconds}ms'),
+                                ),
+                              ],
+                            ),                            Row(
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text('Tension'),
+                                ),
+                                Slider(
+                                  value: model.tension,
+                                  min: 0.0,
+                                  max: 1.0,
+                                  onChanged: (double value) {
+                                    setState(() {
+                                      if (model.attemptUpdate(model.controlPoints, value)) {
+                                        model.tension = value;
+                                      }
+                                    });
+                                  },
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text('${model.tension}'),
                                 ),
                               ],
                             ),

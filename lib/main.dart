@@ -289,6 +289,12 @@ class _CodeDisplayState extends State<CodeDisplay> {
     fontSize: 12.0,
   );
 
+  static const TextStyle keyword = TextStyle(
+    color: Colors.deepPurple,
+    fontFamily: 'FiraCodeBold',
+    fontSize: 12.0,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -316,7 +322,9 @@ class _CodeDisplayState extends State<CodeDisplay> {
         TextSpan span = TextSpan(
           children: <TextSpan>[
             TextSpan(text: '$CatmullRomCurve', style: type),
-            TextSpan(text: '(<', style: punctuation),
+            TextSpan(text: '(', style: punctuation),
+            TextSpan(text: 'const ', style: keyword),
+            TextSpan(text: '<', style: punctuation),
             TextSpan(text: '$Offset', style: type),
             TextSpan(text: '>[', style: punctuation),
             ...List<TextSpan>.generate(model.controlPoints.length - 2, (int index) {

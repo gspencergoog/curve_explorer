@@ -62,12 +62,6 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
           appBar: AppBar(
             title: const Text('Curve Explorer'),
           ),
-          floatingActionButton: FloatingActionButton(
-            child: Icon(Icons.refresh),
-            onPressed: () {
-              model.reset();
-            },
-          ),
           body: Builder(
             builder: (BuildContext context) {
               return Center(
@@ -156,7 +150,18 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                           }),
                         ],
                       ),
-                      CodeDisplay(),
+                      Row(
+                        children: <Widget>[
+                          Expanded(child: CodeDisplay()),
+                          IconButton(
+                            icon: Icon(Icons.refresh),
+                            iconSize: 30,
+                            onPressed: () {
+                              model.reset();
+                            },
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

@@ -1,6 +1,7 @@
 // Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+import 'dart:async';
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/widgets.dart';
@@ -27,10 +28,23 @@ abstract class CurveModel extends Model {
   double get tension;
   set tension(double value);
   Curve get curve;
+  Duration get duration;
+  set duration(Duration value);
+  AnimationController get controller;
+  bool get bounce;
+  set bounce(bool value);
 
   Size displaySize = Size.zero;
 
   void reset();
+
+  /// Starts the animation playing.
+  void play();
+
+  bool get playing;
+
+  /// Stops the animation where it is.
+  void pause();
 
   /// Tries to update the curve with the given information.
   ///
@@ -80,14 +94,21 @@ abstract class CurveModel extends Model {
 }
 
 class CatmullRomModel extends CurveModel {
-  CatmullRomModel({List<Offset> controlPoints = _defaultControlPoints, double tension = _defaultTension})
-      : _hoveredIndex = null,
+  CatmullRomModel({
+    List<Offset> controlPoints = _defaultControlPoints,
+    double tension = _defaultTension,
+    Duration duration = _defaultDuration,
+    this.controller,
+  })  : _hoveredIndex = null,
         _initialTension = tension,
         _initialControlPoints = controlPoints,
+        _initialDuration = duration,
+        _duration = duration,
         super._() {
     curve = CatmullRomCurve(controlPoints, tension: tension);
   }
 
+  static const Duration _defaultDuration = Duration(seconds: 1);
   static const List<Offset> _defaultControlPoints = const <Offset>[
     Offset(0.0, 0.0),
     Offset(0.25, 0.25),
@@ -99,6 +120,7 @@ class CatmullRomModel extends CurveModel {
 
   final List<Offset> _initialControlPoints;
   final double _initialTension;
+  final Duration _initialDuration;
 
   @override
   List<Offset> get controlPoints => curve.controlPoints;
@@ -151,6 +173,62 @@ class CatmullRomModel extends CurveModel {
   @override
   void reset() {
     curve = CatmullRomCurve(_initialControlPoints, tension: _initialTension);
+    duration = _initialDuration;
+    bounce = false;
     notifyListeners();
   }
+
+  @override
+  Duration get duration => _duration;
+  Duration _duration;
+  Timer setDurationTimer;
+  set duration(Duration value) {
+    if (value != _duration) {
+      setDurationTimer?.cancel();
+      _duration = value;
+      controller.duration = _duration;
+      setDurationTimer = Timer(
+        const Duration(milliseconds: 200),
+        () {
+          if (playing) {
+            pause();
+            play();
+          }
+          setDurationTimer = null;
+        },
+      );
+
+      notifyListeners();
+    }
+  }
+
+  @override
+  final AnimationController controller;
+
+  @override
+  bool get bounce => _bounce;
+  bool _bounce = false;
+  set bounce(bool value) {
+    if (value != _bounce) {
+      _bounce = value;
+      if (playing) {
+        pause();
+        play();
+      }
+      notifyListeners();
+    }
+  }
+
+  @override
+  void pause() {
+    controller.stop();
+  }
+
+  @override
+  void play() {
+    controller.repeat(reverse: bounce);
+  }
+
+  @override
+  bool get playing => controller.isAnimating;
 }

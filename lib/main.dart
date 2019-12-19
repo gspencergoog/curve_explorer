@@ -40,21 +40,18 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    duration = Duration(seconds: 1);
-    model = CatmullRomModel();
-    controller = AnimationController(vsync: this, duration: duration);
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+    model = CatmullRomModel(controller: _controller);
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   CurveModel model;
-  AnimationController controller;
-  Duration duration;
-  Timer setDurationTimer;
+  AnimationController _controller;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +87,7 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                           child: ScopedModelDescendant<CurveModel>(
                             builder: (context, child, model) {
                               return CurveDisplay(
-                                animation: controller,
+                                animation: model.controller,
                               );
                             },
                           ),
@@ -100,16 +97,22 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          PlayPauseButton(
-                            animation: controller,
-                            onPressed: (bool playing, bool bouncing) {
-                              setState(() {
-                                if (!playing) {
-                                  controller.stop();
-                                } else {
-                                  controller.repeat(reverse: bouncing);
-                                }
-                              });
+                          ScopedModelDescendant<CurveModel>(
+                            builder: (context, child, model) {
+                              return PlayPauseButton(
+                                animation: model.controller,
+                                bounce: model.bounce,
+                                onPressed: (bool playing, bool bouncing) {
+                                  setState(() {
+                                    model.bounce = bouncing;
+                                    if (playing) {
+                                      model.play();
+                                    } else {
+                                      model.pause();
+                                    }
+                                  });
+                                },
+                              );
                             },
                           ),
                           ScopedModelDescendant<CurveModel>(
@@ -117,7 +120,7 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                               return AnimationExamples(
                                 animation: CurvedAnimation(
                                   curve: model.curve,
-                                  parent: controller,
+                                  parent: model.controller,
                                 ),
                               );
                             },
@@ -127,29 +130,14 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                               configs: <SliderConfig>[
                                 SliderConfig(
                                   title: 'Duration',
-                                  label: '${duration.inMilliseconds}ms',
-                                  value: duration.inMilliseconds.toDouble(),
+                                  label: '${model.duration.inMilliseconds}ms',
+                                  value: model.duration.inMilliseconds.toDouble(),
                                   min: 10,
                                   max: 5000,
                                   divisions: 100,
                                   onChanged: (double value) {
-                                    if (duration.inMilliseconds.toDouble() == value) {
-                                      return;
-                                    }
                                     setState(() {
-                                      setDurationTimer?.cancel();
-                                      duration = Duration(milliseconds: value.round());
-                                      controller.duration = duration;
-                                      setDurationTimer = Timer(
-                                        const Duration(milliseconds: 500),
-                                        () {
-                                          if (controller.isAnimating) {
-                                            controller.stop();
-                                            controller.repeat();
-                                          }
-                                          setDurationTimer = null;
-                                        },
-                                      );
+                                      model.duration = Duration(milliseconds: value.round());
                                     });
                                   },
                                 ),

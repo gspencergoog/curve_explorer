@@ -170,10 +170,12 @@ class PlayPauseButton extends StatefulWidget {
     Key key,
     this.animation,
     this.onPressed,
+    this.bounce,
   }) : super(key: key);
 
   final AnimationController animation;
   final PlayPauseOnPressed onPressed;
+  final bool bounce;
 
   @override
   _PlayPauseButtonState createState() => _PlayPauseButtonState();
@@ -181,7 +183,6 @@ class PlayPauseButton extends StatefulWidget {
 
 class _PlayPauseButtonState extends State<PlayPauseButton> {
   bool playing = false;
-  bool bouncing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +198,7 @@ class _PlayPauseButtonState extends State<PlayPauseButton> {
               onPressed: () {
                 setState(() {
                   playing = !playing;
-                  widget.onPressed(playing, bouncing);
+                  widget.onPressed(playing, widget.bounce);
                 });
               },
             );
@@ -206,10 +207,9 @@ class _PlayPauseButtonState extends State<PlayPauseButton> {
         Row(
           children: <Widget>[
             Icon(Icons.repeat),
-            Switch(value: bouncing, onChanged: (bool value) {
+            Switch(value: widget.bounce, onChanged: (bool value) {
               setState(() {
-                bouncing = value;
-                widget.onPressed(playing, bouncing);
+                widget.onPressed(playing, !widget.bounce);
               });
             },),
           ],

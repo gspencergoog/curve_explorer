@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -43,12 +44,14 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
     Offset(0.75, 0.75),
     Offset(1.0, 1.0),
   ];
+  bool playing = false;
 
   @override
   void initState() {
     super.initState();
+    duration = Duration(seconds: 1);
     model = CatmullRomModel(controlPoints: _initialControlPoints, tension: 0.0);
-    controller = AnimationController(vsync: this, duration: const Duration(seconds: 5));
+    controller = AnimationController(vsync: this, duration: duration);
   }
 
   @override
@@ -59,6 +62,8 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
 
   CurveModel model;
   AnimationController controller;
+  Duration duration;
+  Timer setDurationTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +104,13 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                             majorTickColor: Colors.black,
                             minorTickColor: Colors.grey,
                             textStyle: Theme.of(context).textTheme.body1,
-                            child: CurveDisplay(),
+                            child: ScopedModelDescendant<CurveModel>(
+                              builder: (context, child, model) {
+                                return CurveDisplay(
+                                  animation: controller,
+                                );
+                              },
+                            ),
                           ),
                         ),
                         Row(
@@ -108,15 +119,63 @@ class _CurveExplorerState extends State<CurveExplorer> with SingleTickerProvider
                               animation: controller,
                               onPressed: () {
                                 setState(() {
-                                  if (controller.isAnimating) {
+                                  if (playing) {
                                     controller.stop();
                                   } else {
-                                    controller.forward();
+                                    controller.repeat(reverse: false);
                                   }
+                                  playing = !playing;
                                 });
                               },
                             ),
-                            AnimationExamples(animation: controller),
+                            ScopedModelDescendant<CurveModel>(
+                              builder: (context, child, model) {
+                                return AnimationExamples(
+                                  animation: CurvedAnimation(
+                                    curve: model.curve,
+                                    parent: controller,
+                                  ),
+                                );
+                              },
+                            ),
+                            Row(
+                              children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text('Duration'),
+                                ),
+                                Slider(
+                                  value: duration.inMilliseconds.toDouble(),
+                                  min: 10,
+                                  max: 5000,
+                                  divisions: 100,
+                                  onChanged: (double value) {
+                                    if (duration.inMilliseconds.toDouble() == value) {
+                                      return;
+                                    }
+                                    setState(() {
+                                      setDurationTimer?.cancel();
+                                      duration = Duration(milliseconds: value.round());
+                                      controller.duration = duration;
+                                      setDurationTimer = Timer(
+                                        const Duration(milliseconds: 200),
+                                        () {
+                                          if (controller.isAnimating) {
+                                            controller.stop();
+                                            controller.repeat();
+                                          }
+                                          setDurationTimer = null;
+                                        },
+                                      );
+                                    });
+                                  },
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text('${duration.inMilliseconds}ms'),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ],

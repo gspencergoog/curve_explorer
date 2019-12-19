@@ -143,35 +143,22 @@ class AnimationExamples extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (BuildContext context, Widget child) => child,
-      child: Container(
-        constraints: new BoxConstraints.tight(const Size(150.0, 178.0)),
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                new TranslateSampleTile(animation: animation, name: 'translation'),
-                new RotateSampleTile(animation: animation, name: 'rotation'),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                new ScaleSampleTile(animation: animation, name: 'scale'),
-                new OpacitySampleTile(animation: animation, name: 'opacity'),
-              ],
-            ),
-          ],
-        ),
-      ),
+      builder: (BuildContext context, Widget child) {
+        return Container(
+          constraints: new BoxConstraints.tight(const Size(300.0, 178.0)),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              new TranslateSampleTile(animation: animation, name: 'translation'),
+              new RotateSampleTile(animation: animation, name: 'rotation'),
+              new ScaleSampleTile(animation: animation, name: 'scale'),
+              new OpacitySampleTile(animation: animation, name: 'opacity'),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -192,7 +179,7 @@ class PlayPauseButton extends StatelessWidget {
       animation: animation,
       builder: (BuildContext context, Widget child) {
         return IconButton(
-          icon: Icon(animation.status == AnimationStatus.forward ? Icons.pause : Icons.play_arrow),
+          icon: Icon(animation.isAnimating ? Icons.pause : Icons.play_arrow),
           onPressed: onPressed,
         );
       },

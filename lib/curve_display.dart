@@ -23,6 +23,7 @@ class CurveDisplay extends StatefulWidget {
     this.lineStrokeWidth = 1.0,
     this.minY = -0.5,
     this.maxY = 1.5,
+    this.animation = const AlwaysStoppedAnimation<double>(0.0),
   });
 
   final Color curveColor;
@@ -34,6 +35,7 @@ class CurveDisplay extends StatefulWidget {
   final double lineStrokeWidth;
   final double minY;
   final double maxY;
+  final Animation<double> animation;
 
   @override
   _CurveDisplayState createState() => _CurveDisplayState();
@@ -152,11 +154,12 @@ class _CurveDisplayState extends State<CurveDisplay> {
               });
             }
           },
-          child: Builder(
-            builder: (BuildContext context) {
-//              print('Rebuilding CurvePainter');
+          child: AnimatedBuilder(
+            animation: widget.animation,
+            builder: (BuildContext context, Widget child) {
               return CustomPaint(
                 painter: CurvePainter(
+                  model: model,
                   mousePosition: mousePosition,
                   curveColor: widget.curveColor,
                   pointHoverColor: widget.hoverColor,
@@ -181,6 +184,7 @@ class _CurveDisplayState extends State<CurveDisplay> {
                   points: _points,
                   minY: widget.minY,
                   maxY: widget.maxY,
+                  animation: widget.animation,
                 ),
               );
             },
@@ -193,6 +197,7 @@ class _CurveDisplayState extends State<CurveDisplay> {
 
 class CurvePainter extends CustomPainter {
   CurvePainter({
+    @required this.model,
     @required this.points,
     @required this.controlPoints,
     @required this.tension,
@@ -213,8 +218,10 @@ class CurvePainter extends CustomPainter {
     this.minY = -0.5,
     this.maxY = 1.5,
     this.yGrid = const <double>{},
+    this.animation,
   });
 
+  CurveModel model;
   List<Curve2DSample> points;
   List<Offset> controlPoints;
   double tension;
@@ -235,6 +242,9 @@ class CurvePainter extends CustomPainter {
   double minY;
   double maxY;
   Set<double> yGrid;
+  Animation<double> animation;
+
+  double _lastAnimation = 0.0;
 
   Offset transform(Offset point, Size size) {
     double x = point.dx.clamp(0.0, 1.0);
@@ -295,6 +305,33 @@ class CurvePainter extends CustomPainter {
     }
   }
 
+  void paintAnimation(Canvas canvas, Size size) {
+    switch( animation.status) {
+      case AnimationStatus.forward:
+      case AnimationStatus.reverse:
+        break;
+    case AnimationStatus.dismissed:
+      case AnimationStatus.completed:
+        // Don't draw animation indicator when paused.
+        return;
+        break;
+    }
+    final Paint paint = Paint()
+      ..color = gridColor
+      ..strokeWidth = curveStrokeWidth
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final double x = animation.value;
+    final double y = model.curve.transform(x);
+    final Offset point = transform(Offset(x, y), size);
+    final Offset yAxis = transform(Offset(0.0, y), size);
+    final Offset xAxis = transform(Offset(x, 0.0), size);
+    canvas.drawLine(yAxis, point, paint);
+    canvas.drawLine(xAxis, point, paint);
+  }
+
   void paintControlPoints(Canvas canvas, Size size) {
     final double hitRadius = controlPointRadius + 4;
     final double hitRadiusSquared = hitRadius * hitRadius;
@@ -328,7 +365,9 @@ class CurvePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     graphSizeChanged?.call(size);
+    _lastAnimation = animation.value;
 
+    paintAnimation(canvas, size);
     paintCurve(canvas, size);
     paintControlPolyline(canvas, size);
     paintControlPoints(canvas, size);
@@ -350,7 +389,8 @@ class CurvePainter extends CustomPainter {
       'pointSelectColor': pointSelectColor != oldDelegate.pointSelectColor,
       'controlPointRadius': controlPointRadius != oldDelegate.controlPointRadius,
       'curveStrokeWidth': curveStrokeWidth != oldDelegate.curveStrokeWidth,
-      'lineStrokeWidth': lineStrokeWidth != oldDelegate.lineStrokeWidth
+      'lineStrokeWidth': lineStrokeWidth != oldDelegate.lineStrokeWidth,
+      'animation': animation.value != oldDelegate._lastAnimation,
     };
 //    if (reasons.values.contains(true)) {
 //      for (String reason in reasons.keys) {

@@ -49,16 +49,19 @@ class Graph extends StatelessWidget {
   Widget build(BuildContext context) {
     TextDirection textDirection = Directionality.of(context);
     MediaQueryData mediaQueryData = MediaQuery.of(context);
-    TextPainter minLabel = _createLabel(minX.toStringAsFixed(precision), textDirection, mediaQueryData);
-    TextPainter maxLabel = _createLabel(maxX.toStringAsFixed(precision), textDirection, mediaQueryData);
+    TextPainter minXLabel = _createLabel(minX.toStringAsFixed(precision), textDirection, mediaQueryData);
+    TextPainter maxXLabel = _createLabel(maxX.toStringAsFixed(precision), textDirection, mediaQueryData);
+    TextPainter minYLabel = _createLabel(minY.toStringAsFixed(precision), textDirection, mediaQueryData);
+    TextPainter maxYLabel = _createLabel(maxY.toStringAsFixed(precision), textDirection, mediaQueryData);
+    final double avgYLabelHeight = (maxYLabel.height + minYLabel.height) / 2.0;
     return Stack(
       children: <Widget>[
         Padding(
           padding: EdgeInsets.only(
-            left: _verticalScaleWidth + minLabel.width / 2.0,
-            bottom: _horizontalScaleHeight + minLabel.height / 2.0,
-            top: maxLabel.height / 2.0,
-            right: maxLabel.width / 2.0,
+            left: _verticalScaleWidth + minYLabel.width / 2.0,
+            bottom: _horizontalScaleHeight + minXLabel.height + avgYLabelHeight/2.0,
+            top: avgYLabelHeight * 1.5,
+            right: maxXLabel.width / 2.0,
           ),
           child: child,
         ),

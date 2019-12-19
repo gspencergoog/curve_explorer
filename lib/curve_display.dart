@@ -169,7 +169,7 @@ class _CurveDisplayState extends State<CurveDisplay> {
                   curveStrokeWidth: widget.curveStrokeWidth,
                   lineStrokeWidth: widget.lineStrokeWidth,
                   tension: _tension,
-                  yGrid: <double>{0.0, 1.0},
+                  yGrid: <double>{0.0, 0.5, 1.0},
                   hoverChanged: (int value) {
                     return model.hoverIndex = value;
                   },

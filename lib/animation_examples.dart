@@ -15,9 +15,9 @@ class TranslateSampleTile extends StatelessWidget {
     this.name,
   }) : super(key: key);
 
-  static const double blockHeight = 20.0;
-  static const double blockWidth = 30.0;
-  static const double containerSize = 48.0;
+  static const double blockHeight = blockWidth * 2.0/3.0;
+  static const double blockWidth = containerSize * 0.6;
+  static const double containerSize = 70.0;
 
   final Animation<double> animation;
   final String name;
@@ -145,7 +145,7 @@ class AnimationExamples extends StatelessWidget {
       animation: animation,
       builder: (BuildContext context, Widget child) {
         return Container(
-          constraints: new BoxConstraints.tight(const Size(300.0, 178.0)),
+          constraints: new BoxConstraints.tight(const Size(350.0, 200.0)),
           alignment: Alignment.center,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -163,7 +163,9 @@ class AnimationExamples extends StatelessWidget {
   }
 }
 
-class PlayPauseButton extends StatelessWidget {
+typedef PlayPauseOnPressed = void Function(bool, bool);
+
+class PlayPauseButton extends StatefulWidget {
   const PlayPauseButton({
     Key key,
     this.animation,
@@ -171,18 +173,49 @@ class PlayPauseButton extends StatelessWidget {
   }) : super(key: key);
 
   final AnimationController animation;
-  final VoidCallback onPressed;
+  final PlayPauseOnPressed onPressed;
+
+  @override
+  _PlayPauseButtonState createState() => _PlayPauseButtonState();
+}
+
+class _PlayPauseButtonState extends State<PlayPauseButton> {
+  bool playing = false;
+  bool bouncing = false;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (BuildContext context, Widget child) {
-        return IconButton(
-          icon: Icon(animation.isAnimating ? Icons.pause : Icons.play_arrow),
-          onPressed: onPressed,
-        );
-      },
+    return Column(
+      children: <Widget>[
+        AnimatedBuilder(
+          animation: widget.animation,
+          builder: (BuildContext context, Widget child) {
+            return IconButton(
+              autofocus: true,
+              iconSize: 50.0,
+              icon: Icon(widget.animation.isAnimating ? Icons.pause : Icons.play_arrow),
+              onPressed: () {
+                debugDumpFocusTree();
+                setState(() {
+                  playing = !playing;
+                  widget.onPressed(playing, bouncing);
+                });
+              },
+            );
+          },
+        ),
+        Row(
+          children: <Widget>[
+            Icon(Icons.repeat),
+            Switch(value: bouncing, onChanged: (bool value) {
+              setState(() {
+                bouncing = value;
+                widget.onPressed(playing, bouncing);
+              });
+            },),
+          ],
+        ),
+      ],
     );
   }
 }

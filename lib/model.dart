@@ -97,7 +97,6 @@ class CatmullRomModel extends CurveModel {
     }
   }
 
-
   @override
   int get hoverIndex => _hoveredIndex;
   int _hoveredIndex;

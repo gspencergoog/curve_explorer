@@ -327,8 +327,8 @@ class _CodeDisplayState extends State<CodeDisplay> {
             TextSpan(text: '<', style: punctuation),
             TextSpan(text: 'Offset', style: type),
             TextSpan(text: '>[', style: punctuation),
-            ...List<TextSpan>.generate(model.controlPoints.length - 2, (int index) {
-              final Offset point = model.controlPoints[index + 1];
+            ...List<TextSpan>.generate(model.controlPoints.length, (int index) {
+              final Offset point = model.controlPoints[index];
               return TextSpan(children: <TextSpan>[
                 TextSpan(text: 'Offset', style: type),
                 TextSpan(text: '(', style: punctuation),
@@ -336,7 +336,7 @@ class _CodeDisplayState extends State<CodeDisplay> {
                 TextSpan(text: ', ', style: punctuation),
                 TextSpan(text: '${point.dy.toStringAsFixed(2)}', style: value),
                 TextSpan(text: ')', style: punctuation),
-                if (index != model.controlPoints.length - 3) TextSpan(text: ', ', style: punctuation),
+                if (index != model.controlPoints.length - 1) TextSpan(text: ', ', style: punctuation),
               ]);
             }),
             TextSpan(text: '], ', style: punctuation),

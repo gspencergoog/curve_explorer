@@ -56,7 +56,8 @@ class _CurveDisplayState extends State<CurveDisplay> {
     if (model.controlPoints != _controlPoints || model.tension != _tension) {
       _controlPoints = model.controlPoints;
       _tension = model.tension;
-      CatmullRomSpline spline = (model.curve as CatmullRomCurve).valueSpline;
+      final List<Offset> controlPoints = <Offset>[Offset.zero, ..._controlPoints, const Offset(1.0, 1.0)];
+      CatmullRomSpline spline = CatmullRomSpline(controlPoints, tension: model.tension);
       _points = spline.generateSamples(
         start: spline.findInverse(0.0),
         end: spline.findInverse(1.0),
@@ -166,7 +167,7 @@ class _CurveDisplayState extends State<CurveDisplay> {
               -delta.dy / model.displaySize.height,
             );
             for (int i = 0; i < currentPoints.length; ++i) {
-              if (model.isSelected(i) && i != 0 && i != currentPoints.length - 1) {
+              if (model.isSelected(i)) {
                 final Offset newPosition = Offset(
                   currentPoints[i].dx + parametricDelta.dx,
                   currentPoints[i].dy + (parametricDelta.dy * (widget.maxY - widget.minY)),
@@ -289,11 +290,10 @@ class CurvePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-
-    List<Offset> points = controlPoints.map<Offset>((Offset point) => transform(point, size)).toList();
-
+    List<Offset> points = <Offset>[Offset.zero, ...controlPoints, const Offset(1.0, 1.0)];
+    points = points.map<Offset>((Offset point) => transform(point, size)).toList();
     path.moveTo(points[0].dx, points[0].dy);
-    for (int i = 1; i < controlPoints.length; ++i) {
+    for (int i = 1; i < points.length; ++i) {
       path.lineTo(points[i].dx, points[i].dy);
     }
     canvas.drawPath(path, paint);
@@ -371,7 +371,7 @@ class CurvePainter extends CustomPainter {
       if (mousePosition != null) {
         double distanceSquared = (lastPoint - mousePosition).distanceSquared;
         if (distanceSquared < hitRadiusSquared) {
-          if (!hovering && i > 0 && i < controlPoints.length - 1) {
+          if (!hovering) {
             hoverChanged(i);
           }
         } else if (hovering) {
@@ -405,29 +405,19 @@ class CurvePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CurvePainter oldDelegate) {
-    Map<String, bool> reasons = <String, bool>{
-      'mousePosition': mousePosition != oldDelegate.mousePosition,
-      'points': points != oldDelegate.points,
-      'controlPoints': controlPoints != oldDelegate.controlPoints,
-      'tension': tension != oldDelegate.tension,
-      'selectedPoints': selectedPoints != oldDelegate.selectedPoints,
-      'hoverIndex': hoverIndex != oldDelegate.hoverIndex,
-      'curveColor': curveColor != oldDelegate.curveColor,
-      'pointHoverColor': pointHoverColor != oldDelegate.pointHoverColor,
-      'lineColor': lineColor != oldDelegate.lineColor,
-      'pointSelectColor': pointSelectColor != oldDelegate.pointSelectColor,
-      'controlPointRadius': controlPointRadius != oldDelegate.controlPointRadius,
-      'curveStrokeWidth': curveStrokeWidth != oldDelegate.curveStrokeWidth,
-      'lineStrokeWidth': lineStrokeWidth != oldDelegate.lineStrokeWidth,
-      'animation': animation.value != oldDelegate._lastAnimation,
-    };
-//    if (reasons.values.contains(true)) {
-//      for (String reason in reasons.keys) {
-//        if (reasons[reason] && reason != 'mousePosition') {
-//          print('Repainting: $reason changed.');
-//        }
-//      }
-//    }
-    return reasons.values.contains(true);
+    return mousePosition != oldDelegate.mousePosition
+        || points != oldDelegate.points
+        || controlPoints != oldDelegate.controlPoints
+        || tension != oldDelegate.tension
+        || selectedPoints != oldDelegate.selectedPoints
+        || hoverIndex != oldDelegate.hoverIndex
+        || curveColor != oldDelegate.curveColor
+        || pointHoverColor != oldDelegate.pointHoverColor
+        || lineColor != oldDelegate.lineColor
+        || pointSelectColor != oldDelegate.pointSelectColor
+        || controlPointRadius != oldDelegate.controlPointRadius
+        || curveStrokeWidth != oldDelegate.curveStrokeWidth
+        || lineStrokeWidth != oldDelegate.lineStrokeWidth
+        || animation.value != oldDelegate._lastAnimation;
   }
 }

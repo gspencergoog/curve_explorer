@@ -62,7 +62,6 @@ abstract class CurveModel extends Model {
   /// Returns true if the point was not already in the selection.
   bool addToSelection(int selected) {
     if (selection.add(selected)) {
-      print('Adding $selected to selection');
       notifyListeners();
       return true;
     }
@@ -72,7 +71,6 @@ abstract class CurveModel extends Model {
   /// Clears the set of currently selected points.
   void clearSelection() {
     if (selection.isNotEmpty) {
-      print('Clearing selection.');
       selection.clear();
       notifyListeners();
     }
@@ -83,7 +81,6 @@ abstract class CurveModel extends Model {
   /// Returns true if the point existed and was removed from the selection.
   bool removeFromSelection(int selected) {
     if (selection.remove(selected)) {
-      print('Removing $selected from selection');
       notifyListeners();
       return true;
     }
@@ -110,11 +107,9 @@ class CatmullRomModel extends CurveModel {
 
   static const Duration _defaultDuration = Duration(seconds: 1);
   static const List<Offset> _defaultControlPoints = const <Offset>[
-    Offset(0.0, 0.0),
     Offset(0.25, 0.25),
     Offset(0.5, 0.5),
     Offset(0.75, 0.75),
-    Offset(1.0, 1.0),
   ];
   static const double _defaultTension = 0.0;
 
@@ -123,7 +118,7 @@ class CatmullRomModel extends CurveModel {
   final Duration _initialDuration;
 
   @override
-  List<Offset> get controlPoints => curve.controlPoints;
+  List<Offset> get controlPoints =>  curve.controlPoints;
 
   @override
   double get tension => curve.tension;
@@ -159,10 +154,6 @@ class CatmullRomModel extends CurveModel {
     tension ??= curve.tension;
     List<String> reasons = <String>[];
     if (!CatmullRomCurve.validateControlPoints(controlPoints, tension: tension, reasons: reasons)) {
-      print('Failed validation because:');
-      for (String reason in reasons) {
-        print('  $reason');
-      }
       return false;
     }
     curve = CatmullRomCurve(controlPoints, tension: tension);

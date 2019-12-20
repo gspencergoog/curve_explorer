@@ -321,11 +321,11 @@ class _CodeDisplayState extends State<CodeDisplay> {
       builder: (context, child, model) {
         TextSpan span = TextSpan(
           children: <TextSpan>[
-            TextSpan(text: '$CatmullRomCurve', style: type),
+            TextSpan(text: 'CatmullRomCurve', style: type),
             TextSpan(text: '(', style: punctuation),
             TextSpan(text: 'const ', style: keyword),
             TextSpan(text: '<', style: punctuation),
-            TextSpan(text: '$Offset', style: type),
+            TextSpan(text: 'Offset', style: type),
             TextSpan(text: '>[', style: punctuation),
             ...List<TextSpan>.generate(model.controlPoints.length - 2, (int index) {
               final Offset point = model.controlPoints[index + 1];
